@@ -36,7 +36,10 @@ Because it is one static file, it runs anywhere:
   line-level on Word pages, exact word-level on PDF and PowerPoint pages.
 - **Book typography** — Word documents are set with justified lines like a printed book.
 - **Formats** — PDF (real rendering + text extraction), DOCX (headings, lists, tables re-laid out
-  as book pages), PPTX (slides rebuilt as clean editorial pages).
+  as book pages), PPTX (slides rebuilt as clean editorial pages), **XLSX** (sheets paginated as
+  warm paper table pages).
+- **Fullscreen** — enters fit-to-display automatically and restores your fit on exit;
+  edge arrows fade to 10% so the book owns the screen.
 - **Themes** — dark / light / **sepia paper** / system. **Fullscreen** with auto-hiding chrome.
 - **Keyboard-first** — press `?` in the app for all shortcuts.
 
@@ -74,7 +77,9 @@ NODE_PATH=$(pwd)/node_modules node tests/test.js
 - Voice output uses your browser’s speech synthesis; installed voices vary by OS.
 - Translation/analysis call public web services; the Claude key is optional and stored only
   in `localStorage`.
-- Old `.doc` / `.ppt` files are not supported — save them as `.docx` / `.pptx` first.
+- Old `.doc` / `.ppt` / `.xls` files are not supported — save them as `.docx` / `.pptx` / `.xlsx` first.
+- ReadOn is a **reader**, not an editor: documents open for reading, listening, translation and
+  analysis. To change a file, edit it in Office/Google Docs and re-open it here.
 
 ## License
 
