@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ReadOn · Compress — shrink PDF, JPG, PNG, DOCX & more, locally</title>
+<meta name="description" content="Professional in-browser file compression: PDF, JPG, PNG, WebP, SVG, DOCX, PPTX, XLSX, EPUB. Presets at 10%, 25%, 50%, 75% and 90% — lossless structures first, measured quality after. Nothing is uploaded.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#373A3E" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#EEF0F2" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Compress">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ReadOn">
+<meta property="og:title" content="ReadOn · Compress — shrink PDF, JPG, PNG, DOCX offline">
+<meta property="og:description" content="100 free tools in one file: compress to 10/25/50/75/90 %, Extreme and a real Lossless preset, plus image, PDF, document and text utilities. Everything runs on your device — nothing is uploaded.">
+<meta property="og:image" content="screenshots/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://rjsarkar83.github.io/ReadOn/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ReadOn · Compress — 103 tools, fully offline">
+<meta name="twitter:description" content="Compress PDF/JPG/PNG/DOCX to 10–90 %, Extreme or Lossless. 103 working tools. Nothing leaves your device.">
+<meta name="twitter:image" content="screenshots/og-card.png">
+<link rel="canonical" href="https://rjsarkar83.github.io/ReadOn/">
+<meta name="robots" content="index,follow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232E3135'/%3E%3Cpath d='M16 6v14M10 14l6 6 6-6' stroke='%23D75A5A' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7 25h18' stroke='%23BFA873' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>/*__CSS__*/</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/><path d="M4 21h16"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/><path d="M4 21h16"/></symbol>
+  <symbol id="i-zip" viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M11 6v2M11 10v2M11 14v2"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2"/><circle cx="10" cy="16" r="2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l2.1 5.4L19.5 10l-5.4 2.1L12 17.5 9.9 12.1 4.5 10l5.4-1.6L12 3z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9L18 15z"/></symbol>
+  <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"/><path d="M20 20l-4.4-4.4M8.5 11h5M11 8.5v5"/></symbol>
+  <symbol id="i-resize" viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M4 4l6 6M20 20l-6-6"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></symbol>
+  <symbol id="i-mono" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 2.4 5.7"/><path d="M4 19v-7h7"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.4 6 10.4A6 6 0 0 1 6 13.4C6 9.4 12 3 12 3z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></symbol>
+  <symbol id="i-broom" viewBox="0 0 24 24"><path d="M4 20l6-6M9 15l-2-2 6-6 4 4-6 6z"/><path d="M14 4l6 6"/></symbol>
+  <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M8 13h1.6a1.4 1.4 0 0 1 0 2.8H8V13zm0 2.8V18"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><path d="M6 3v6a4 4 0 0 0 4 4h8M6 21v-6a4 4 0 0 1 4-4"/><path d="M15 10l3 3-3 3"/></symbol>
+  <symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v6a4 4 0 0 1 4 4v8M18 3v6a4 4 0 0 0-4 4"/></symbol>
+  <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="7" cy="18" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8.6 16.2L19 4M15.4 16.2L5 4"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12 3H4v8l9 9 8-8-9-9z"/><circle cx="8" cy="7" r="1.4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-5 4 4 3-3 4 4"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="1.6"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4.5v15"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.2"/></symbol>
+  <symbol id="i-lock-open" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/><circle cx="12" cy="15.5" r="1.2"/></symbol>
+  <symbol id="i-fix" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 1 0 5 5L21 10l-3-3z"/><path d="M13 11L4 20l-1 1 1 1 1-1 9-9"/></symbol>
+  <symbol id="i-b64" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><path d="M8 4v16M16 4v16"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-5 4 5 4M15 8l5 4-5 4"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7 0l3-3A4 4 0 0 0 13 4.3l-1.4 1.4"/><path d="M14 11a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 19.7l1.4-1.4"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.4l3.4 2"/></symbol>
+  <symbol id="i-case" viewBox="0 0 24 24"><path d="M3 18l4.5-11 4.5 11M4.6 14h5.8"/><path d="M20.5 11.2a3 3 0 1 0-3.5 4.6 3 3 0 0 0 3.5-4.6zM20.5 11v7"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M6 4v16M3 17l3 3 3-3"/><path d="M13 7h8M13 12h6M13 17h4"/></symbol>
+</defs></svg>
+
+<div class="frameBar" id="frameBar" hidden>
+  <svg><use href="#i-up"/></svg>
+  <span><b>Preview mode:</b> downloads are blocked inside this frame.</span>
+  <a href="./index.html" target="_blank" rel="noopener">Open in its own tab ↗</a>
+</div>
+<header class="hdr">
+  <a class="brand" href="https://rjsarkar83.github.io/ReadOn/" title="Back to ReadOn">
+    <span class="mark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></span>
+    <b>Read<i>on</i></b><em>Compress</em>
+  </a>
+  <span class="sp"></span>
+  <span class="tag on" id="privacyTag">100% local · nothing uploaded</span>
+  <button class="hbtn" id="themeBtn" type="button" title="Switch theme"><svg id="themeIco"><use href="#i-moon"/></svg><span id="themeLbl">Dark</span></button>
+  <a class="hbtn" href="https://rjsarkar83.github.io/ReadOn/" title="Open the ReadOn reader"><svg><use href="#i-doc"/></svg>Reader</a>
+</header>
+
+<main class="wrap">
+  <section class="hub" id="hub">
+    <div class="hubhead">
+      <div>
+        <h1>ReadOn <span>Tools</span></h1>
+        <p id="hubCount">every tool runs in this tab · nothing is uploaded</p>
+      </div>
+      <label class="searchbox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"/><path d="M20 20l-4.4-4.4"/></svg>
+        <input id="toolSearch" type="search" placeholder="Search tools — pdf, upscale, json…" aria-label="Search tools">
+      </label>
+    </div>
+    <div id="toolGrid"></div>
+  </section>
+
+  <section class="work" id="work" data-tool="compress">
+  <div class="hero">
+    <div>
+      <h2 class="sectH1">Compress<span>.</span></h2>
+      <p>Reduce file size · keep the quality · 10 / 25 / 50 / 75 / 90 % / Extreme</p>
+    </div>
+    <div class="tags">
+      <span class="tag">PDF</span><span class="tag">JPG</span><span class="tag">PNG</span>
+      <span class="tag">WEBP</span><span class="tag">SVG</span><span class="tag">DOCX</span>
+      <span class="tag">PPTX</span><span class="tag">XLSX</span><span class="tag">EPUB</span>
+    </div>
+  </div>
+  <div class="capsbar"><span class="dot"></span><span id="caps">detecting device…</span></div>
+
+  <section id="dz" class="dz" role="button" tabindex="0" aria-label="Drop files here or press Enter to browse">
+    <div class="up"><svg><use href="#i-up"/></svg></div>
+    <h2>Drop files to compress</h2>
+    <p>or click to browse · paste with ⌘/Ctrl + V · batch unlimited</p>
+    <div class="chips">
+      <span class="chip">PDF</span><span class="chip">JPG</span><span class="chip">PNG</span>
+      <span class="chip">WEBP</span><span class="chip">SVG</span><span class="chip">DOCX</span>
+      <span class="chip">PPTX</span><span class="chip">XLSX</span><span class="chip">ZIP</span>
+      <span class="chip">JSON</span><span class="chip">HTML</span>
+    </div>
+    <button class="btn solid" id="browse" type="button"><svg><use href="#i-up"/></svg>Browse files</button>
+    <input type="file" id="fileInput" multiple class="sr">
+  </section>
+
+  <section class="sect">
+    <div class="sect-h"><span class="lbl">Compression target</span><span class="line"></span><span class="cap" id="presetHint">balanced</span></div>
+    <div class="presets" id="presets" role="group" aria-label="Compression target"></div>
+  </section>
+
+  <details class="adv" id="adv">
+    <summary><svg class="arrow" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chev"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sliders"/></svg>Engineering controls</summary>
+    <div class="body">
+      <div class="field">
+        <div><div class="t">PDF background text</div><div class="d">Removes the invisible text layer + its embedded fonts; pages stay identical.</div></div>
+        <div class="seg" data-opt="pdfText"><button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button></div>
+      </div>
+      <div class="field">
+        <div><div class="t">PDF annotations</div><div class="d">Drops comments, form widgets and their appearance streams.</div></div>
+        <div class="seg" data-opt="pdfAnnots"><button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button></div>
+      </div>
+      <div class="field">
+        <div><div class="t">Bookmarks &amp; structure tree</div><div class="d">Removes outlines and tagged-PDF accessibility trees.</div></div>
+        <div class="seg" data-opt="pdfBookmarks"><button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button></div>
+      </div>
+      <div class="field">
+        <div><div class="t">Embedded attachments</div><div class="d">Removes file attachments stored inside the PDF.</div></div>
+        <div class="seg" data-opt="pdfAttachments"><button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button></div>
+      </div>
+      <div class="field">
+        <div><div class="t">Lossless stays bit-exact</div><div class="d">On: never touch a pixel, even if the 5 % target is missed. Off (default): a gentle high-quality re-encode is allowed only when it stays above 98 % SSIM and 40 dB PSNR, and it is labelled <em>near-lossless</em> with the exact scores.</div></div>
+        <button class="switch" data-flag="losslessStrict" aria-pressed="false" aria-label="Keep lossless bit-exact"></button>
+      </div>
+      <div class="field">
+        <div><div class="t">Allow WebP output</div><div class="d">Smaller than JPEG for most photos — changes the file extension.</div></div>
+        <button class="switch" data-flag="allowWebp" aria-pressed="false" aria-label="Allow WebP output"></button>
+      </div>
+      <div class="field">
+        <div><div class="t">Pixel cap</div><div class="d">Upper bound on the long edge after resampling.</div></div>
+        <div class="seg" data-opt="maxDim" data-num="1"><button data-v="0">None</button><button data-v="3200">3200</button><button data-v="2400">2400</button><button data-v="1600">1600</button></div>
+      </div>
+    </div>
+  </details>
+
+  <section class="queue" id="queue" hidden>
+    <div class="qhead">
+      <b id="qTitle">Queue</b>
+      <span class="sp"></span>
+      <span class="sum" id="qSum"></span>
+      <button class="btn sm ghost" id="stop" type="button" hidden><svg><use href="#i-x"/></svg>Stop</button>
+      <button class="btn sm ghost" id="rerun" type="button" hidden><svg><use href="#i-refresh"/></svg>Re-run</button>
+      <button class="btn sm ghost" id="clear" type="button"><svg><use href="#i-x"/></svg>Clear</button>
+    </div>
+    <div id="rows"></div>
+  </section>
+
+  <section class="notes">
+    <div class="card"><h3>Saving</h3><p>Every Save button writes straight to your device — nothing is uploaded. In a sandboxed preview frame or in-app browser the browser blocks downloads: use <b>Open in its own tab</b> at the top, then Save works normally.</p></div>
+    <div class="card"><h3>Lossless first</h3><p>Every file starts with a bit-exact pass: PNG predictors are re-optimised, JPEG metadata stripped, PDF objects re-serialised and dead ones dropped, Office XML re-packed. If that already hits your target, nothing else runs — the result is byte-for-byte faithful.</p></div>
+    <div class="card"><h3>Target, not blind</h3><p>10 / 25 / 50 / 75 / 90&nbsp;% and <em>Extreme</em> are <em>sizes to reach</em>. The engine climbs a ladder — quality 97&nbsp;→&nbsp;18, long edge 3200&nbsp;→&nbsp;640&nbsp;px — and stops at the first rung that lands under your target without breaking the fidelity floor. Gentlest possible setting, every time.</p></div>
+    <div class="card"><h3>Audited quality</h3><p>Anything lossy is measured against the original (PSNR and global SSIM) and the number is printed next to the result. No silent damage: if a pass cannot help, the file is returned untouched.</p></div>
+  </section>
+  </section>
+
+  <section class="toolpane" id="toolPane" hidden>
+    <div class="toolhead">
+      <button class="back" id="toolBack" type="button">← All tools</button>
+      <span class="ti"><svg id="toolIco"><use href="#i-down"/></svg></span>
+      <div><h2 id="toolTitle">Tool</h2><p id="toolBlurb"></p></div>
+    </div>
+    <div class="toolpad">
+      <div class="opts" id="toolOpts"></div>
+      <div id="toolFiles">
+        <section id="tdz" class="dz" role="button" tabindex="0" aria-label="Drop files or press Enter to browse">
+          <div class="up"><svg><use href="#i-up"/></svg></div>
+          <h2 id="tdzTitle">Drop files here</h2>
+          <p id="tdzSub">or click to browse · files never leave this tab</p>
+          <button class="btn solid" id="tbrowse" type="button"><svg><use href="#i-up"/></svg>Browse files</button>
+          <input type="file" id="tInput" multiple class="sr">
+        </section>
+        <div class="touts" id="toolPicked"></div>
+      </div>
+      <div id="toolText" hidden>
+        <div class="ta">
+          <div class="col">
+            <div class="col-h"><b>input</b><span class="sp"></span><button class="btn sm ghost" id="tSample" type="button">Sample</button><button class="btn sm ghost" id="tClear" type="button">Clear</button></div>
+            <textarea id="tIn" spellcheck="false" placeholder="Paste your text here…"></textarea>
+          </div>
+          <div class="col">
+            <div class="col-h"><b>output</b><span class="sp"></span><button class="btn sm ghost" id="tCopy" type="button"><svg><use href="#i-doc"/></svg>Copy</button><button class="btn sm ghost" id="tDownload" type="button"><svg><use href="#i-down"/></svg>Save</button></div>
+            <textarea id="tOut" spellcheck="false" readonly placeholder="Result appears here…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="tcta" id="tCTA">
+        <button class="btn solid" id="tRun" type="button"><svg><use href="#i-check"/></svg>Run</button>
+        <span class="hint" id="tState">ready</span>
+        <span class="sp"></span>
+        <button class="btn sm ghost" id="tReset" type="button"><svg><use href="#i-x"/></svg>Reset</button>
+      </div>
+      <div class="touts" id="toolResults"></div>
+      <div class="tnote" id="toolNote"></div>
+      <div class="tpreview" id="toolPreview" hidden></div>
+    </div>
+  </section>
+
+
+</main>
+
+<footer class="foot" id="foot" hidden>
+  <div>
+    <div class="big" id="totalSaved">0%</div>
+    <div class="meta"><b id="totalAbs">0 B</b> removed</div>
+  </div>
+  <div class="meta" id="totalMeta">—</div>
+  <span class="sp"></span>
+  <button class="btn" id="dlAll" type="button"><svg><use href="#i-zip"/></svg>Download all (.zip)</button>
+</footer>
+
+<div class="modal" id="cmpModal" aria-hidden="true" role="dialog" aria-label="Before and after comparison">
+  <div class="sheet">
+    <header>
+      <b id="cmpTitle">Comparison</b>
+      <span class="sp"></span>
+      <button class="btn sm" id="cmpDl" type="button"><svg><use href="#i-down"/></svg>Download</button>
+      <button class="btn sm ghost" id="cmpClose" type="button"><svg><use href="#i-x"/></svg>Close</button>
+    </header>
+    <div class="body">
+      <div class="cmp" id="cmpBox">
+        <canvas id="cmpA"></canvas>
+        <div class="after" id="cmpAfter"><canvas id="cmpB"></canvas></div>
+        <div class="handle" id="cmpHandle"></div>
+        <span class="tagA">Original</span><span class="tagB">Compressed</span>
+      </div>
+      <div class="facts" id="cmpFacts"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="text/plain" id="worker-src">/*__WORKER__*/</script>
+<script>/*__JS__*/</script>
+</body>
+</html>
