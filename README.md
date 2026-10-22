@@ -152,6 +152,25 @@ pool of Web Workers, the queue advances in parallel lanes, and **Stop** is alway
 
 ---
 
+## 2 · Brand
+
+The ReadOn mark (two paper leaves, a gold ribbon and a red down-arrow) lives in
+**`assets/readon-mark.svg`**. `node assets/make_icons.js` renders every size from it —
+`favicon.svg`, `favicon-16/32.png`, `apple-touch-icon.png`, `icon-192/512.png`,
+`icon-512-maskable.png` and the social card — and syncs the copies used by `/`, `/compress/` and
+`/pwa/`, so the icon in the tab, in the header and on the home screen is always the same artwork.
+
+## 2a · Two apps in one repo
+
+| Page | What it is |
+|---|---|
+| `reader.html` | the **ReadOn reader** — PDF, Word and PowerPoint opened as a book, read aloud in 22 languages, translated and analysed. Its engines (pdf.js, mammoth, JSZip, jsPDF) are **bundled in `vendor/`**, so it works with the CDN blocked or fully offline; the CDN is only a fallback. |
+| `index.html` (`compress/`) | the **108 tools** + the 7-level compressor. |
+
+Both link to each other with relative paths, so `/Reader/` and `/ReadOn/` both work and nothing points
+at another person's site. `qa/ux_test.js` clicks the Reader link from both locations, opens a real PDF
+in it and comes back.
+
 ## 2b · The tool grid (108 tools — see `TOOLS.md` for the per-tool proof)
 
 Everything below runs on the same engine in the same tab. No upload, no API, no "coming soon".

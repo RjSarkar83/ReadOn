@@ -984,6 +984,14 @@
     softError('Something went wrong: ' + msg);
   });
 
+  /* the reader ships next to the app; resolve the link for both locations
+     (/index.html and /compress/index.html) so it never points at someone else's site */
+  const readerLink = $('#readerLink');
+  if (readerLink) {
+    const inSub = /\/compress\/[^/]*$/.test(location.pathname);
+    readerLink.href = inSub ? '../reader.html' : 'reader.html';
+  }
+
   renderHub();
   // the totals bar belongs to the compress workspace only
   const footWatch = setInterval(() => {

@@ -2,7 +2,7 @@
    Caches the app itself so it keeps working with no connection.
    Compression never touches the network; this only makes install/offline possible.
    The same file is served from the repo root and from /compress/. */
-const VERSION = 'readon-compress-v5';
+const VERSION = 'readon-compress-v6';
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {

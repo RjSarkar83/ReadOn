@@ -15,7 +15,7 @@ OUT = os.path.join(ROOT, 'readon-compress-github.zip')
 
 FILES = [
     'index.html',
-    'readon-home.html',
+    'reader.html',
     'sw.js',
     '.nojekyll',
     'LICENSE',
@@ -35,14 +35,37 @@ FILES = [
     'manifest.webmanifest',
     'icon-192.png',
     'icon-512.png',
+    'icon-512-maskable.png',
+    'favicon.svg',
+    'favicon-32.png',
+    'favicon-16.png',
+    'apple-touch-icon.png',
+    'assets/readon-mark.svg',
+    'assets/readon-mark-original.png',
+    'assets/make_icons.js',
     'compress/build.js',
     'compress/manifest.webmanifest',
     'compress/icon-192.png',
     'compress/icon-512.png',
+    'compress/icon-512-maskable.png',
+    'compress/favicon.svg',
+    'compress/favicon-32.png',
+    'compress/favicon-16.png',
+    'compress/apple-touch-icon.png',
+    'vendor/pdf.min.js',
+    'vendor/pdf.worker.min.js',
+    'vendor/mammoth.browser.min.js',
+    'vendor/jszip.min.js',
+    'vendor/jspdf.umd.min.js',
     'pwa/sw.js',
     'pwa/manifest.webmanifest',
     'pwa/icon-192.png',
     'pwa/icon-512.png',
+    'pwa/icon-512-maskable.png',
+    'pwa/favicon.svg',
+    'pwa/favicon-32.png',
+    'pwa/favicon-16.png',
+    'pwa/apple-touch-icon.png',
     'qa/run.sh',
     'qa/make_fixtures.py',
     'qa/pdf_engine_test.js',
@@ -87,10 +110,12 @@ def collect():
 
 def main():
     # the app is shipped twice: repo root (Pages opens straight into it) and compress/
-    # readon-home.html keeps the original ReadOn landing page, untouched
+    # reader.html keeps the original ReadOn reading app, untouched
     import shutil
     shutil.copyfile(os.path.join(ROOT, 'compress', 'index.html'), os.path.join(ROOT, 'index.html'))
-    for asset in ('sw.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', '404.html'):
+    for asset in ('sw.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
+                  'icon-512-maskable.png', 'favicon.svg', 'favicon-32.png', 'favicon-16.png',
+                  'apple-touch-icon.png', '404.html'):
         shutil.copyfile(os.path.join(ROOT, 'compress', asset), os.path.join(ROOT, asset))
     names = collect()
     with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:

@@ -1,7 +1,7 @@
 /* ReadOn · Compress — offline shell
    Caches the app itself so it keeps working with no connection.
    Compression never touches the network; this only makes install/offline possible. */
-const VERSION = 'readon-compress-v4';
+const VERSION = 'readon-compress-v6';
 const SHELL = ['./', './index.html', './compress/', './compress/index.html',
   './compress/manifest.webmanifest', './compress/icon-192.png', './compress/icon-512.png'];
 

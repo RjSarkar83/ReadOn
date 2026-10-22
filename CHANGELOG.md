@@ -1,5 +1,42 @@
 # Changelog — ReadOn · Compress
 
+## 4.2.0 — the new ReadOn mark, everywhere
+
+The supplied logo (two paper leaves under a gold ribbon, red down-arrow) is now the brand — drawn as
+**vector geometry**, not a pasted bitmap, so it stays sharp at 16 px and at 512 px:
+
+| Where | What changed |
+|---|---|
+| App header | the old generic download glyph is replaced by the mark (`#i-logo` in the SVG sprite), 36 × 26 px, leaves inherit the theme text colour so it reads on dark *and* light |
+| Reader landing | same mark above the READON wordmark |
+| `favicon.svg` + `favicon-32.png` + `favicon-16.png` | the mark (was an inline data-URI of the old arrow) |
+| `icon-192.png`, `icon-512.png` | dark rounded tile + mark |
+| `icon-512-maskable.png` | mark inset to 62 %, safe inside Android's mask |
+| `apple-touch-icon.png` (180) | dark tile + mark |
+| `screenshots/og-card.png` | 1200 × 630 social card rebuilt around the mark |
+| Manifest | ships all four icons including the maskable one |
+
+One source of truth: **`assets/readon-mark.svg`**; `node assets/make_icons.js` re-renders every PNG
+from it (Playwright, then LANCZOS downscale) and syncs the copies in `compress/` and `pwa/`, so the
+logo can never drift between the tab, the header and the home screen.
+
+## 4.1.0 — the Reader actually opens
+
+The header's **Reader** button pointed at `https://rjsarkar83.github.io/ReadOn/` — an absolute URL to
+someone else's deployment — and the reader itself was not in the zip at all, so on any other Pages
+account the link was a dead end.
+
+* `readon-home.html` is now **`reader.html`** and ships in the zip, with a relative link resolved at
+  runtime (`reader.html` from the root, `../reader.html` from `/compress/`).
+* Its four engines (**pdf.js + worker, mammoth, JSZip, jsPDF**, 2.4 MB) are **bundled in `vendor/`**
+  with the CDN kept only as an `onerror` fallback — the reader now opens PDF (12 pages), DOCX
+  (20 pages) and PPTX (7 pages) **with the CDN blocked entirely**.
+* A **Tools** button was added to the reader's header, so a document that is already open still has a
+  way back to the 108 tools.
+* The Cloudflare bot-detection snippet that had been captured into the page was removed (it 404'd on
+  every load).
+* `sitemap.xml` lists `reader.html`; the service worker (v6) precaches it too.
+
 ## 4.0.0 — security round, layout round, and a friendlier UI
 
 ### New tools (105 → 108)

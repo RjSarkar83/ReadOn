@@ -93,6 +93,27 @@ const openTool = async (page, id) => {
   await openTool(page, 'pdf-unlock');
   check('tool options reset when reopened', (await page.locator('[data-opt="password"]').inputValue()) === '');
 
+  // 8 — the Reader is shipped with the app and its link resolves from both locations
+  await page.goto(`http://127.0.0.1:${PORT}/index.html`);
+  await page.waitForTimeout(250);
+  const relRoot = await page.getAttribute('#readerLink', 'href');
+  await Promise.all([page.waitForNavigation(), page.click('#readerLink')]);
+  await page.waitForTimeout(900);
+  check('Reader opens from the repo root', /reader\.html$/.test(page.url()) && (await page.title()).includes('ReadOn'), `${relRoot} → ${page.url().split('/').pop()}`);
+  const engines = await page.evaluate(() => ({ pdf: typeof pdfjsLib, docx: typeof mammoth, zip: typeof JSZip, pdfOut: typeof jspdf }));
+  check('Reader engines load (bundled, not CDN)', Object.values(engines).every((t) => t !== 'undefined'), JSON.stringify(engines));
+  await page.setInputFiles('#file', path.join(FIX, 'text.pdf'));
+  await page.waitForTimeout(2500);
+  check('Reader opens a PDF', /BOOK READY/i.test(await page.locator('body').innerText()));
+  await Promise.all([page.waitForNavigation(), page.click('header a[href="./compress/index.html"]')]);
+  await page.waitForTimeout(500);
+  check('Reader links back to the tools', await page.locator('.tcard').count() > 100);
+  await page.goto(`http://127.0.0.1:${PORT}/compress/index.html`);
+  await page.waitForTimeout(250);
+  check('Reader link resolves from /compress/ too', (await page.getAttribute('#readerLink', 'href')) === '../reader.html');
+  await page.goto(`http://127.0.0.1:${PORT}/index.html`);
+  await page.waitForTimeout(250);
+
   check('no console errors on desktop', errors.length === 0, errors.slice(0, 2).join(' | '));
   await ctx.close();
 

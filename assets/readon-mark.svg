@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><defs>
+    <linearGradient id="g" x1="10" y1="0" x2="502" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7B322"/><stop offset=".13" stop-color="#FFD23F"/>
+      <stop offset=".37" stop-color="#E6721D"/><stop offset=".52" stop-color="#A6531C"/>
+      <stop offset=".68" stop-color="#D9A518"/><stop offset=".85" stop-color="#FFD21E"/>
+      <stop offset="1" stop-color="#EE9420"/>
+    </linearGradient>
+  </defs>
+  <path fill="#F4F0EA" d="M232 228C212 178 178 152 134 152C84 152 47 186 47 228C47 270 84 304 134 304C178 304 212 278 232 228Z"/>
+  <path fill="#F4F0EA" d="M280 228C300 178 334 152 378 152C428 152 465 186 465 228C465 270 428 304 378 304C334 304 300 278 280 228Z"/>
+  <path fill="none" stroke="url(#g)" stroke-width="23" stroke-linecap="round"
+        d="M14 264C14 174 63 106 130 106C191 106 230 172 256 234C282 172 321 106 382 106C449 106 498 174 498 264"/>
+  <path fill="none" stroke="#FFF3C4" stroke-width="4" stroke-linecap="round" opacity=".45"
+        d="M21 246C25 166 70 116 130 116C186 116 222 174 251 228"/>
+  <path fill="#EE1111" d="M203 358H309L256 406Z"/></svg>
