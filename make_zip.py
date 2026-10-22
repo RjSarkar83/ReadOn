@@ -78,6 +78,7 @@ FILES = [
     'qa/tools_test.js',
     'qa/tool-evidence.json',
     'qa/ux_test.js',
+    'qa/image_test.js',
     'qa/shots.js',
     'qa/validate.py',
     'qa/lossless_check.js',

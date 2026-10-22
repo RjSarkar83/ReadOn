@@ -15,7 +15,7 @@ const css = read('src/app.css');
 
 const tools = read('src/tools.js');
 const pageJs = [...libs, engine, tools, read('src/app.js')].join('\n\n');
-const workerJs = [...libs, engine, read('src/worker.boot.js')].join('\n\n')
+const workerJs = [...libs, engine, tools, read('src/worker.boot.js')].join('\n\n')
   // a literal </script> inside the inert block would close it early
   .replace(/<\/script/gi, '<\\/script');
 

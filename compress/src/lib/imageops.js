@@ -80,27 +80,156 @@ const ImageOps = (() => {
     return new ImageData(out, dw, dh);
   }
 
-  /* ── unsharp mask (3×3 approximation of a Gaussian) ──────────────── */
-  function blur3(img) {
+
+  /* ── upscaling that behaves like a real resampler ─────────────────────
+     Progressive steps of at most 2× (the way print shops do it): one huge
+     Lanczos kernel over a 4× gap rings on edges, two 2× steps do not. */
+  function resampleSteps(img, dw, dh, maxStep = 2) {
+    let cur = img, w = img.width, h = img.height;
+    let guard = 0;
+    while ((w < dw || h < dh) && guard++ < 3) {
+      const f = Math.min(maxStep, Math.max(dw / w, dh / h));
+      const nw = Math.min(dw, Math.max(w + 1, Math.round(w * f)));
+      const nh = Math.min(dh, Math.max(h + 1, Math.round(h * f)));
+      cur = resampleLanczos(cur, nw, nh);
+      w = nw; h = nh;
+    }
+    return (w === dw && h === dh) ? cur : resampleLanczos(cur, dw, dh);
+  }
+
+  /* unsharp mask with halo control: the overshoot a sharpener adds is capped, so
+     edges get crisper without the white/black rims that ruin text and hair lines */
+  function unsharpClamp(img, amount = 0.5, threshold = 2, ceil = 24) {
+    const b = blur3(img);
+    const d = img.data, s = b.data;
+    for (let i = 0; i < d.length; i += 4) {
+      for (let c = 0; c < 3; c++) {
+        const diff = d[i + c] - s[i + c];
+        if (Math.abs(diff) <= threshold) continue;
+        const add0 = Math.max(-ceil, Math.min(ceil, amount * diff));
+        d[i + c] = d[i + c] + add0;
+      }
+    }
+    return img;
+  }
+
+  /* two-scale detail recovery: fine 3×3 ridge + a wider 5×5 pass, both clamped */
+  function detailBoost(img, amount = 0.6) {
+    if (amount <= 0) return img;
+    const fine = blur3(img);              // one pass, reused for both scales
+    const wide = blur3(fine);
+    const d = img.data, f = fine.data, w = wide.data;
+    const hi = 20, lo = 10;
+    for (let i = 0; i < d.length; i += 4) {
+      for (let c = 0; c < 3; c++) {
+        const df = d[i + c] - f[i + c];
+        if (Math.abs(df) > 2) d[i + c] = d[i + c] + Math.max(-hi, Math.min(hi, amount * 0.75 * df));
+        const dw = d[i + c] - w[i + c];
+        if (Math.abs(dw) > 3) d[i + c] = d[i + c] + Math.max(-lo, Math.min(lo, amount * 0.5 * dw));
+      }
+    }
+    return img;
+  }
+
+  /* ── noise control: 3×3 bilateral-ish smoothing that keeps edges ─────
+     Phone photos carry sensor grain; sharpening it turns a picture into
+     confetti, so Enhance can clean the flat areas first. */
+  function denoise(img, strength = 0.5) {
+    if (strength <= 0) return img;
     const { width: w, height: h, data: s } = img;
     const out = new Uint8ClampedArray(s.length);
-    const K = [1, 2, 1, 2, 4, 2, 1, 2, 1], S = 16;
+    const k = Math.max(0, Math.min(1, strength));
+    const range = 24 + 40 * (1 - k);
+    /* exp() per neighbour per pixel is far too slow on a 12 MP photo: precompute
+       the weight for every possible colour distance (0…765) once */
+    const LUT = new Float32Array(766);
+    const denom = 2 * range * range;
+    for (let d = 0; d < 766; d++) LUT[d] = Math.exp(-(d * d) / denom);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        let r = 0, g = 0, b = 0, a = 0, n = 0;
-        for (let ky = -1; ky <= 1; ky++) {
-          const yy = y + ky;
-          if (yy < 0 || yy >= h) continue;
-          for (let kx = -1; kx <= 1; kx++) {
-            const xx = x + kx;
-            if (xx < 0 || xx >= w) continue;
-            const k = K[(ky + 1) * 3 + (kx + 1)];
-            const p = (yy * w + xx) * 4;
-            r += s[p] * k; g += s[p + 1] * k; b += s[p + 2] * k; a += s[p + 3] * k; n += k;
+        const o = (y * w + x) * 4;
+        const r0 = s[o], g0 = s[o + 1], b0 = s[o + 2];
+        let r = 0, g = 0, b = 0, wsum = 0;
+        const y0 = y > 0 ? y - 1 : 0, y1 = y < h - 1 ? y + 1 : h - 1;
+        const x0 = x > 0 ? x - 1 : 0, x1 = x < w - 1 ? x + 1 : w - 1;
+        for (let yy = y0; yy <= y1; yy++) {
+          const row = yy * w;
+          for (let xx = x0; xx <= x1; xx++) {
+            const p = (row + xx) * 4;
+            const dist = Math.abs(s[p] - r0) + Math.abs(s[p + 1] - g0) + Math.abs(s[p + 2] - b0);
+            const wt = LUT[dist];
+            r += s[p] * wt; g += s[p + 1] * wt; b += s[p + 2] * wt; wsum += wt;
           }
         }
-        const o = (y * w + x) * 4;
-        out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = a / n;
+        out[o] = r0 + (r / wsum - r0) * k;
+        out[o + 1] = g0 + (g / wsum - g0) * k;
+        out[o + 2] = b0 + (b / wsum - b0) * k;
+        out[o + 3] = s[o + 3];
+      }
+    }
+    return new ImageData(out, w, h);
+  }
+
+  /* grey-world auto white balance, weighted towards the bright half of the frame */
+  function autoWhiteBalance(img, strength = 1) {
+    const d = img.data;
+    let sr = 0, sg = 0, sb = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const lum = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+      if (lum < 40) continue;                      // ignore shadows, they are noisy
+      sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; n++;
+    }
+    if (!n) return img;
+    const mr = sr / n, mg = sg / n, mb = sb / n;
+    const grey = (mr + mg + mb) / 3;
+    const gr = 1 + (grey / (mr || 1) - 1) * strength;
+    const gg = 1 + (grey / (mg || 1) - 1) * strength;
+    const gb = 1 + (grey / (mb || 1) - 1) * strength;
+    for (let i = 0; i < d.length; i += 4) {
+      d[i] = d[i] * gr; d[i + 1] = d[i + 1] * gg; d[i + 2] = d[i + 2] * gb;
+    }
+    return img;
+  }
+
+  /* how much of the output is clipped to pure black / white (quality guard) */
+  function clipped(img) {
+    const d = img.data; let lo = 0, hi = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] < 2 && d[i + 1] < 2 && d[i + 2] < 2) lo++;
+      else if (d[i] > 253 && d[i + 1] > 253 && d[i + 2] > 253) hi++;
+    }
+    const n = d.length / 4;
+    return { black: lo / n, white: hi / n };
+  }
+
+  /* ── unsharp mask (3×3 approximation of a Gaussian) ──────────────────
+     Separable [1 2 1]/4 passes with edge replication: no per-pixel division
+     and no border darkening, which also makes a 12 MP pass ~3× faster. */
+  function blur3(img) {
+    const { width: w, height: h, data: s } = img;
+    const tmp = new Float32Array(w * h * 3);
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const xm = x > 0 ? x - 1 : 0, xp = x < w - 1 ? x + 1 : w - 1;
+        const a = (row + xm) * 4, b = (row + x) * 4, c = (row + xp) * 4;
+        const o = (row + x) * 3;
+        tmp[o] = (s[a] + 2 * s[b] + s[c]) * 0.25;
+        tmp[o + 1] = (s[a + 1] + 2 * s[b + 1] + s[c + 1]) * 0.25;
+        tmp[o + 2] = (s[a + 2] + 2 * s[b + 2] + s[c + 2]) * 0.25;
+      }
+    }
+    const out = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      const ym = y > 0 ? y - 1 : 0, yp = y < h - 1 ? y + 1 : h - 1;
+      const r0 = ym * w, r1 = y * w, r2 = yp * w;
+      for (let x = 0; x < w; x++) {
+        const i0 = (r0 + x) * 3, i1 = (r1 + x) * 3, i2 = (r2 + x) * 3;
+        const o = (r1 + x) * 4;
+        out[o] = (tmp[i0] + 2 * tmp[i1] + tmp[i2]) * 0.25;
+        out[o + 1] = (tmp[i0 + 1] + 2 * tmp[i1 + 1] + tmp[i2 + 1]) * 0.25;
+        out[o + 2] = (tmp[i0 + 2] + 2 * tmp[i1 + 2] + tmp[i2 + 2]) * 0.25;
+        out[o + 3] = s[o + 3];
       }
     }
     return new ImageData(out, w, h);
@@ -257,7 +386,7 @@ const ImageOps = (() => {
     return new Uint8Array(await blob.arrayBuffer());
   }
 
-  return { lanczos, resampleLanczos, blur3, unsharp, autoLevels, contrastSat, grayscale, rotate, flip, watermark, toCanvas, encode, canvas, ctx2d };
+  return { lanczos, resampleLanczos, resampleSteps, blur3, unsharp, unsharpClamp, detailBoost, denoise, autoWhiteBalance, clipped, autoLevels, contrastSat, grayscale, rotate, flip, watermark, toCanvas, encode, canvas, ctx2d };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = { ImageOps };

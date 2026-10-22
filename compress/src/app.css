@@ -74,10 +74,9 @@ h1,h2,h3{font-weight:800;letter-spacing:.5px}
   backdrop-filter:blur(12px);
 }
 .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit}
-.brand .mark{width:36px;height:26px;display:grid;place-items:center;color:#F4F0EA}
-[data-theme="light"] .brand .mark,[data-theme="sepia"] .brand .mark{color:#111315}  /* the artwork's own black leaves */
+.brand .mark{display:grid;place-items:center}
 
-.brand .mark svg{width:36px;height:26px;display:block}
+.brand .mark img{width:44px;height:25px;display:block;object-fit:contain}
 .brand:hover .mark{filter:brightness(1.12)}
 .brand b{font-size:12px;font-weight:800;letter-spacing:4.2px;text-transform:uppercase}
 .brand i{font-style:normal;color:var(--r)}

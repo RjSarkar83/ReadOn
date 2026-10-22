@@ -1,9 +1,208 @@
 # Changelog — ReadOn · Compress
 
+## 5.2.0 — Design studio removed; the compressor carries the release
+
+Asked for plainly: *"remove Design studio"*. It is out — not hidden behind a flag, out: the module,
+the screen, its styles, its icons, its two gates, its screenshots and every mention are gone, and the
+build is back to the size it was before it existed (**730.6 KB**).
+
+What that means, concretely:
+
+* **108 tools again** — `Popular` is Compress once more; the hub renders **108 cards**, and
+  `Tools.list.length` is 108 in the shipped build.
+* `compress/src/studio.js` deleted; `build.js` no longer bundles it; the `#studio` route is gone from
+  `app.js`; the screen, its seven SVG icons and its CSS block are gone from the template and stylesheet.
+* `qa/studio_test.js` and `qa/studio_perf_test.js` deleted, `qa/run.sh` no longer runs them,
+  `make_zip.py` no longer ships them, `qa/shots.js` no longer takes their screenshots.
+* `TOOLS.md`, `README.md` and the page metadata are back to **108** everywhere.
+
+**Nothing else was touched.** The engine, the seven presets (Lossless → Extreme), the 108 tools, the
+enhance/upscale pipeline, the Cancel button and live timer, the original-artwork logo, the offline
+PWA, the layouts and the whole gate are exactly as they were in 4.3.0.
+
+The round-5 work is kept in this changelog for the record (`5.1.0`, `5.0.0` below) — the code it
+described is no longer in the tree.
+
+## 5.1.0 — the studio, with no waiting in it
+
+Reported: *"100 % workable and faster designing platform… designer ko kisi bhi kaam ke liye wait
+na karna pade"*. So the Studio was put on a stopwatch and every place it made a designer wait was
+removed. Nothing about the feature set changed — the same clicks, the same templates, the same
+exports — but they now land inside a single frame.
+
+### Measured before → after (same machine, same build, `qa/studio_perf_test.js`)
+
+| Action | before | after |
+|---|---|---|
+| Open the Studio | 218 ms | **~170 ms** (panel chrome first, thumbnails fill in during idle) |
+| Switch template (handler work) | ~108 ms | **5–10 ms** |
+| Select a block | 63 ms | **≤ 12 ms** |
+| Change a colour | 100 ms | **≤ 8 ms** |
+| Add a block | 125 ms | **≤ 10 ms** |
+| Duplicate a block | — | **≤ 8 ms** |
+| Canvas size change | — | **≤ 6 ms** |
+| Drag frame (renderer cost) | 17.7 ms mean, 50 ms worst | **0.10 ms mean, 0.3 ms worst** |
+| Drag frame gap | mean 17.7 / max 50 ms | **median 16.7 ms** (one vsync), max 33 ms |
+| 40-block poster, still dragging | — | **median 16.7 ms**, renderer 0.12 ms/frame |
+| Full-size photo dragging | — | **median 16.7 ms**, renderer 0.18 ms/frame |
+| Export PNG / JPG / PDF | 203 / 121 / 146 ms | 200–430 / 130–200 / 150–200 ms (2400 px long edge) |
+
+### What was actually slow, and what fixed it
+
+1. **Every click re-rendered the whole scene.** Text was re-measured word by word with
+   `measureText` on every frame. Now: line breaking is memoised per block/style/width, and the
+   finished scene is rendered **once** into an offscreen bitmap that is blitted when needed.
+2. **Every pointer move during a drag was a full redraw.** Now the still scene is painted once
+   (without the block being dragged) onto the bottom canvas, and the moving block is drawn on the
+   overlay — state updates on every event, the canvas paints at most once per animation frame.
+3. **Releasing the mouse re-rendered the scene.** It no longer does: the frame on screen is already
+   correct, so only the selection box is redrawn (the cached still-layer is updated with a single
+   blit).
+4. **Every panel update rebuilt the whole panel**, which re-decoded the eight template thumbnails
+   (≈90 ms of image decoding for a colour change). The panel is now built once, thumbnails are
+   rendered during idle time, and later updates only toggle class names on the existing chips.
+5. **The selection overlay was cleared in full for a 2-pixel box.** It now clears only the old and
+   new selection rectangles.
+6. **Typing re-rendered everything on every keystroke.** The block being edited is drawn live on the
+   overlay, so a keystroke costs a single small draw.
+7. **Autosave could land in the middle of a drag.** It is now skipped while a block is being dragged
+   or typed, runs in `requestIdleCallback`, only writes when something actually changed, and a
+   *saved* indicator in the top bar says so.
+8. **A 12 MP photo was stored as a 6 MB base64 string**, which made every undo snapshot and every
+   autosave heavy. Photos are now stored at a 1600 px long edge (visually identical at every canvas
+   size the studio offers).
+9. **Canvas backing stores were re-allocated on every template switch** and could reach 15 MP. They
+   are only resized when the size really changes, and are capped at 3.2 MP (the export is still
+   full resolution — a 2400 px long edge).
+
+### Also new in this pass (nothing to wait for, nothing to hunt for)
+
+* **Ctrl/⌘+S** exports a PNG immediately — no menu.
+* **Undo / Redo buttons grey out** when there is nothing to undo or redo (they were always lit).
+* A quiet **saved** indicator in the top bar confirms each autosave.
+
+Proof: **`qa/studio_perf_test.js` — 27 checks**, and the functional gate grew to **31 checks**
+(`qa/studio_test.js`), both green. The perf gate compares every frame against an idle-page control
+sample taken on the same machine, so a stutter has to be the app's fault to fail.
+
+## 5.0.0 — ReadOn Studio: a whole design, by clicking
+
+Reported: *"Click click se puri designing ho jaye"*. So the app grew a second half: **ReadOn Studio**,
+a design editor that opens on a finished template and never asks anyone to start from a blank page.
+
+**The path is three clicks, and it is the same on a phone.**
+`Design studio` card → click one of eight template thumbnails → `Export` → `PNG` / `JPG` / `PDF`.
+Everything after that is optional: click a block to select it, drag it to move it, grab a corner to
+resize it, double-click text to type, click a colour swatch to recolour it.
+
+* **8 templates**, all real designs, all rendered live as thumbnails (no grey placeholders):
+  Quote 1080², Sale poster 1240×1754, Story 1080×1920, Visiting card 1050×600, YouTube thumb 1280×720,
+  Flyer A4, Certificate 1754×1240, and a starter-filled A4 for anything else.
+* **Everything is clickable, nothing is hidden in a menu**: templates, heading / sub-line / body text,
+  photo, box, circle, line, eight canvas sizes, 16 colours, gradient or flat background. Selecting a
+  block reveals only the controls that make sense for it (font, size, bold, UPPER, alignment, colour
+  for text; fill + corner radius for shapes; fill / fit / round corners for photos).
+* **Snapping** to the canvas centre, edges and other blocks with pink guide lines, so it looks
+  deliberate without any skill.
+* **Undo / redo** (60 steps, `Ctrl+Z` / `Ctrl+Shift+Z`), **autosave** to `localStorage` — the design is
+  still there after a reload or a closed tab.
+* **Export** renders at print-worthy size (the long edge is 2400 px), fills white so JPG never goes
+  black, and PDF export is one real page the exact shape of the design
+  (`PDFEdit.imagesToPdf({ pageSize: 'image', margin: 0 })` → 1272.75 × 1800 pt for A4).
+
+### Three real bugs found while building it (all fixed)
+
+1. **Every autosave fired a junk download.** The local function `save()` (localStorage) and the
+   download helper `save(bytes, name, mime)` had the same name, so the later declaration won:
+   each autosave called the downloader with no arguments and the browser saved a 9-byte
+   `undefined.txt`. Renamed to `persist()` — the comment in the source now warns about it.
+2. **Half-painted canvas on every Retina screen.** `drawScene()` set the transform to `scale` and
+   silently threw away the device-pixel-ratio scale that `draw()` had just applied, so the design
+   filled only the top-left quarter at 2× DPI. Now `scale × dpr`.
+3. **Nothing could be dragged.** The selection overlay canvas sat on top of the design canvas and
+   swallowed every pointer event, so click-to-select worked but drag and resize never started.
+   The overlay is now `pointer-events:none`.
+
+### Layout, per device
+
+Desktop/tablet: controls on the left (templates first, then Add, canvas size, colours, selected
+block), canvas centred on the stage. Phone (≤ 900 px): the panel becomes a scrolling sheet under the
+canvas with the templates in a swipeable row, the top bar collapses to icon buttons, and the canvas
+always fits the screen — verified at 390 × 844 with **0 px** horizontal overflow and a tap-only
+design exported successfully.
+
+Proof: **`qa/studio_test.js` — 28 checks**, all clicks and drags on the shipped UI, every artifact
+re-opened with Pillow / `pdfinfo`:
+
+```
+28/28 studio checks passed
+PASS  all 8 templates render a real design  — 8/8
+PASS  dragging moves the block              — 70,40 → 158,90
+PASS  the corner handle resizes the block   — 864×302 → 977×378
+PASS  PNG export downloads and is not blank — 1697×2400 · 568 KB · std 57.28
+PASS  JPG is smaller than the PNG           — 157 KB < 568 KB
+PASS  PDF export is one valid page          — 1 page · 147 KB
+PASS  template → export → format is 3 clicks to a real file — 3 clicks · 1350×2400
+PASS  390 px phone: a tap-only design exports — 2400×1371 · 104 KB
+```
+
+The tool inventory is now **109** (Popular: Compress + Design studio). `TOOLS.md` carries the
+per-tool proof for the 108 file/text tools exactly as before — the Studio is not a file tool, it has
+its own gate.
+
+## 4.3.0 — the image engine, fixed at the root
+
+Reported: *"tools thik se kaam nahi kar raha hai jaise upscale, enhance"*. Both complaints were real,
+and both had the same root cause plus a second one hiding behind it.
+
+### Bug 1 — any tool whose options were not filled in produced a black image
+
+`Enhance` and `Upscale` read their settings straight from the DOM. Called without every option
+(an automated run, a keyboard user who never touched a slider, a fallback path) the value was
+`undefined`, `for (let i = 0; i < undefined; i++)` never executed, and the encoder was handed an
+untouched buffer — a **1200×900 pure black JPEG**. Adds a guard in the registry itself: every
+`run()` now starts from the option defaults declared with the tool, whatever the caller passes.
+Proof: `qa/image_test.js` measures mean/σ/unique colours on every artefact and fails on a flat image.
+
+### Bug 2 — the heavy work ran on the UI thread
+
+A 12 MP photo froze the tab for **≈1 s per stage** (2.7 s of dead page for one Enhance). The tool
+registry is now bundled into the worker payload and a new `cmd:'tool'` message runs *any* file tool
+off-thread; the page only falls back to the main thread when a tool needs the DOM (SVG rasterising,
+`<img>` decoding). Measured on a 12 MP photo: longest frozen frame **993 ms → 24 ms**.
+
+### Enhance is now a real enhancement pipeline
+
+denoise (edge-preserving, LUT-accelerated bilateral) → grey-world **auto white balance** →
+auto levels → contrast/saturation → **two-scale detail recovery with clamped haloes**. Strength
+selector (Light / Medium / Strong) replaces the three raw sliders, three toggles are exposed, and the
+output note reports whether the frame clipped at all.
+
+### Upscale is now a real resampler
+
+`resampleSteps()` upsamples in **progressive ≤2× passes** (a single 4× Lanczos kernel rings on
+edges), then recovers detail with the clamped unsharp mask. Default output is JPEG (a ×2 PNG of a
+small photo was 5 MB); PNG/WebP remain available. Benchmarked against ground truth — a half-size
+copy scaled back to the original scores **43.7 dB PSNR** — and the halo limiter never pushes a
+12 MP frame over 5 % clipped pixels.
+
+### UI
+
+* Live **"working… 2.4 s"** counter and a **Cancel** button (stop is honest: nothing is changed).
+* `done in 2.7 s` instead of a bare `done`, so speed is visible.
+* The drop zone switches to *"Drop another file to replace"* once a file is picked.
+* No duplicated note under the result row.
+
+### Tests
+
+`qa/image_test.js` — **24 checks** at pixel level through the real UI (worker path included):
+dimensions per tool, non-blank output, true grey for grayscale, rotate/crop/frame/resize contracts,
+watermark diff, EXIF stripping, a 12 MP budget, and a frame-gap budget so a freeze would fail the gate.
+
 ## 4.2.0 — the new ReadOn mark, everywhere
 
-The supplied logo (two paper leaves under a gold ribbon, red down-arrow) is now the brand — drawn as
-**vector geometry**, not a pasted bitmap, so it stays sharp at 16 px and at 512 px:
+The supplied artwork is now the brand **exactly as delivered** — the original PNG, not a redraw
+(the leaves stay black on light backgrounds, as in the file), with the alpha channel preserved:
 
 | Where | What changed |
 |---|---|

@@ -154,8 +154,9 @@ pool of Web Workers, the queue advances in parallel lanes, and **Stop** is alway
 
 ## 2 · Brand
 
-The ReadOn mark (two paper leaves, a gold ribbon and a red down-arrow) lives in
-**`assets/readon-mark.svg`**. `node assets/make_icons.js` renders every size from it —
+The ReadOn mark lives in **`assets/readon-mark-original.png`** (the delivered artwork, untouched).
+The header and the reader embed it inline; the icons are that same file composited on its own black
+tile. `node assets/make_icons.js` derives every size from it —
 `favicon.svg`, `favicon-16/32.png`, `apple-touch-icon.png`, `icon-192/512.png`,
 `icon-512-maskable.png` and the social card — and syncs the copies used by `/`, `/compress/` and
 `/pwa/`, so the icon in the tab, in the header and on the home screen is always the same artwork.
@@ -252,10 +253,11 @@ accent, hairline borders, 8 pt uppercase micro-labels.
 | `qa/lossless_check.js` + `qa/lossless_verify.py` | Lossless-proof gate: runs the real preset on 20 files, re-renders every output with poppler (PDF @110 dpi) / Pillow and demands **0 differing pixels**, SSIM ≥ 98 % + PSNR ≥ 40 dB for `near-lossless`, byte-identical Office payloads |
 | `qa/bench.js` | rewrites `benchmark.csv` |
 | `qa/perf_test.js` | times 16 files on the main thread vs. the worker pool (speed proof) |
+| `qa/image_test.js` | 24 pixel-level checks for the image tools through the real UI: exact dimensions, non-blank output, true grey, undo contracts, 12 MP time budget **and** a frame-gap budget so a UI freeze fails the gate |
 | `qa/ux_test.js` | 16 friendliness checks: no dead ends, plain-language errors, retry, wrong-type handling, search, option reset, and Pixel 5 / iPhone 12 layout, tap-target and sticky-Run behaviour |
 | `qa/tools_test.js` | clicks **all 108 tools** like a user, saves every artefact and validates it independently: `pdfinfo` + `qpdf --check` (0 warnings) for PDFs, Pillow for images, zipfile CRCs for archives, exact output for text tools |
 
-Latest run: **29/29 engine · 109/109 tool checks · 8/8 UI · 6/6 device profiles · 10/10 PWA · 10/10 root layout · 20/20 lossless proof · 135/135 artifact validations · 0 console errors** (10 stages).
+Latest run: **29/29 engine · 121/121 tool checks · 8/8 UI · 21/21 UX · 6/6 device profiles · 10/10 PWA · 10/10 root layout · 24/24 image · 20/20 lossless proof · 135/135 artifact validations · 0 console errors** (10 stages, `ALL CHECKS PASSED`).
 
 ---
 

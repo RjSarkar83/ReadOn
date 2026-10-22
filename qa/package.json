@@ -1,15 +1,13 @@
 {
-  "name": "qa",
-  "version": "1.0.0",
-  "main": "browser_test.js",
+  "name": "readon-qa",
+  "version": "5.1.0",
+  "private": true,
+  "description": "The ReadOn quality gate — engine, browser, UI/UX, device, PWA, tools, image, studio and speed checks",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "bash run.sh",
+    "quick": "bash run.sh --quick"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
-    "playwright": "^1.47.0"
+    "playwright": "1.47.0"
   }
 }

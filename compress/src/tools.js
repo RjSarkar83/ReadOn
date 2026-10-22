@@ -17,6 +17,10 @@ const Tools = (() => {
   const extOf = (name) => String(name).split('.').pop().toLowerCase();
   const stem = (name) => String(name).replace(/\.[^.]+$/, '');
 
+  /* A heavy stage on a 12 MP photo takes ~1 s. Yielding between stages lets the browser
+     paint (the "working…" state, the spinner, scroll) so the page never looks frozen. */
+  const yieldNow = () => new Promise((r) => setTimeout(r, 0));
+
   const toImageData = async (file) => {
     const dec = await Imaging.decode(file.bytes, mimeOf(file.name));
     const c = Imaging.resample(dec.bmp, dec.width, dec.height);   // real canvas, area-capped
@@ -107,47 +111,67 @@ const Tools = (() => {
 
   add({
     id: 'enhance', group: 'Image', icon: 'i-spark', kind: 'files',
-    title: 'Enhance image', blurb: 'Auto-levels, contrast, colour, unsharp mask',
-    accept: 'image/*', multiple: false, tags: 'improve quality contrast sharpen bright photo',
+    title: 'Enhance image', blurb: 'Denoise, auto white balance, levels, detail',
+    accept: 'image/*', multiple: false, tags: 'improve quality contrast sharpen bright photo clean noise',
     options: [
+      { key: 'level', label: 'Strength', type: 'select', values: [['light', 'Light'], ['medium', 'Medium'], ['strong', 'Strong']], def: 'medium' },
+      { key: 'denoise', label: 'Remove noise', type: 'toggle', def: true },
+      { key: 'wb', label: 'Auto white balance', type: 'toggle', def: true },
       { key: 'levels', label: 'Auto levels', type: 'toggle', def: true },
-      { key: 'contrast', label: 'Contrast', type: 'range', min: 80, max: 130, def: 106, suffix: '%' },
-      { key: 'sat', label: 'Colour', type: 'range', min: 70, max: 160, def: 108, suffix: '%' },
-      { key: 'sharp', label: 'Sharpness', type: 'range', min: 0, max: 120, def: 55, suffix: '%' },
       { key: 'format', label: 'Output', type: 'select', values: [['jpeg', 'JPEG'], ['png', 'PNG'], ['webp', 'WebP']], def: 'jpeg' }
     ],
     async run(files, o) {
       const f = files[0];
+      const strength = { light: 0.45, medium: 1, strong: 1.6 }[o.level] ?? 1;
       let img = await toImageData(f);
+      const before = ImageOps.clipped(img);
+      await yieldNow();
+      if (o.denoise) { img = ImageOps.denoise(img, 0.35 * strength); await yieldNow(); }
+      if (o.wb) { img = ImageOps.autoWhiteBalance(img, 0.85); await yieldNow(); }
       if (o.levels) img = ImageOps.autoLevels(img);
-      img = ImageOps.contrastSat(img, o.contrast / 100, o.sat / 100);
-      if (o.sharp > 0) img = ImageOps.unsharp(img, o.sharp / 100, 2);
+      img = ImageOps.contrastSat(img, 1 + 0.06 * strength, 1 + 0.08 * strength);
+      await yieldNow();
+      img = ImageOps.detailBoost(img, 0.45 * strength);
+      await yieldNow();
+      const after = ImageOps.clipped(img);
+      const lost = Math.round(after.black * 1000) / 10 + Math.round(after.white * 1000) / 10;
+      const gain = Math.round((after.black + after.white - before.black - before.white) * 1000) / 10;
       const enc = await encodeImage(img, o.format, 0.94);
-      return { files: [{ name: `${stem(f.name)}-enhanced.${enc.ext}`, bytes: enc.bytes, note: `${img.width}×${img.height} · ${o.levels ? 'auto-levels · ' : ''}contrast ${o.contrast}% · colour ${o.sat}% · sharp ${o.sharp}%` }] };
+      const steps = [o.denoise ? 'denoise' : null, o.wb ? 'white balance' : null, o.levels ? 'auto levels' : null,
+        `detail +${Math.round(45 * strength)}%`].filter(Boolean).join(' · ');
+      return { files: [{ name: `${stem(f.name)}-enhanced.${enc.ext}`, bytes: enc.bytes,
+        note: `${img.width}×${img.height} · ${o.level} · ${steps}${gain > 1.5 ? ' · clipped ' + lost + '%' : ' · no clipping'}` }] };
     }
   });
 
   add({
     id: 'upscale', group: 'Image', icon: 'i-zoom', kind: 'files',
-    title: 'Upscale image', blurb: 'Lanczos-3 ×2/×3/×4 + unsharp recovery',
+    title: 'Upscale image', blurb: '×2/×3/×4 progressive Lanczos + detail recovery',
     accept: 'image/*', multiple: false, tags: 'bigger enlarge resize 2x 4x resolution hd upscale',
     options: [
       { key: 'factor', label: 'Scale', type: 'select', values: [['2', '×2'], ['3', '×3'], ['4', '×4']], def: '2' },
       { key: 'cap', label: 'Max long edge', type: 'number', def: 4096, min: 512, max: 8192 },
-      { key: 'sharp', label: 'Sharpness', type: 'range', min: 0, max: 120, def: 45, suffix: '%' },
-      { key: 'format', label: 'Output', type: 'select', values: [['jpeg', 'JPEG'], ['png', 'PNG'], ['webp', 'WebP']], def: 'png' }
+      { key: 'detail', label: 'Detail recovery', type: 'range', min: 0, max: 100, def: 45, suffix: '%' },
+      { key: 'format', label: 'Output', type: 'select', values: [['jpeg', 'JPEG (small)'], ['png', 'PNG (lossless)'], ['webp', 'WebP']], def: 'jpeg' }
     ],
     async run(files, o) {
       const f = files[0];
       const img = await toImageData(f);
-      const factor = Math.max(1, +o.factor || 2);
+      const factor = Math.max(1, Number(o.factor) || 2);
+      const cap = Math.max(512, Number(o.cap) || 4096);
       const long = Math.max(img.width, img.height) * factor;
-      const scale = Math.min(factor, o.cap / Math.max(img.width, img.height));
+      const scale = Math.min(factor, cap / Math.max(img.width, img.height));
       const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
-      let big = ImageOps.resampleLanczos(img, w, h);
-      if (o.sharp > 0) big = ImageOps.unsharp(big, o.sharp / 100, 1);
+      const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      /* at most 2× per pass: a single 4× Lanczos kernel rings badly on edges */
+      let big = ImageOps.resampleSteps(img, w, h, 2);
+      await yieldNow();
+      if (Number(o.detail) > 0) { big = ImageOps.detailBoost(big, Number(o.detail) / 100); await yieldNow(); }
+      const ms = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
       const enc = await encodeImage(big, o.format, 0.95);
-      return { files: [{ name: `${stem(f.name)}-${w}x${h}.${enc.ext}`, bytes: enc.bytes, note: `${img.width}×${img.height} → ${w}×${h} (Lanczos-3)${long > o.cap ? ' · capped at ' + o.cap + ' px' : ''}` }] };
+      const passes = scale > 2 ? '2 progressive passes' : 'Lanczos-3';
+      return { files: [{ name: `${stem(f.name)}-${w}x${h}.${enc.ext}`, bytes: enc.bytes,
+        note: `${img.width}×${img.height} → ${w}×${h} (${passes}${Number(o.detail) ? ' · detail +' + o.detail + '%' : ''})${long > cap ? ' · capped at ' + cap + ' px' : ''}` }] };
     }
   });
 
@@ -1603,6 +1627,25 @@ const Tools = (() => {
       return { files: out };
     }
   });
+
+  /* ── option defaults live with the tool, not with the DOM ──────────
+     Every run() used to depend on the caller filling in option values. Any path that
+     omitted one (a direct call, a test, a UI whose option node was missing) fed
+     `undefined` into the maths and produced a black image. Now a missing option always
+     falls back to its declared default, so a tool behaves the same however it is called. */
+  for (const t of list) {
+    if (typeof t.run !== 'function') continue;
+    const run = t.run;
+    const defs = {};
+    for (const o of t.options || []) defs[o.key] = o.def;
+    t.run = function (input, opts) {
+      const merged = Object.assign({}, defs);
+      if (opts) for (const k of Object.keys(opts)) {
+        if (opts[k] !== undefined && opts[k] !== null) merged[k] = opts[k];
+      }
+      return run.call(t, input, merged);
+    };
+  }
 
   return {
     list,

@@ -191,7 +191,23 @@
       if (url) { URL.revokeObjectURL(url); url = null; }
     }
 
-    return { run, stop, init, get ok() { return booted && !broken; } };
+    /* run a whole tool in a worker; the caller falls back to the main thread on NO_WORKER */
+    function runTool(toolId, files, opts) {
+      if (!init()) return Promise.reject(Object.assign(new Error('no worker'), { code: 'NO_WORKER' }));
+      const list = live();
+      if (!list.length) return Promise.reject(Object.assign(new Error('no worker'), { code: 'NO_WORKER' }));
+      const id = 't' + (++seq);
+      const w = list[seq % list.length];
+      /* copies, so the picked files stay usable for a retry after a failure */
+      const payloadFiles = files.map((f) => ({ name: f.name, type: f.type, bytes: f.bytes.slice() }));
+      return new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        try { w.postMessage({ cmd: 'tool', id, toolId, files: payloadFiles, opts }, payloadFiles.map((f) => f.bytes.buffer)); }
+        catch (e) { pending.delete(id); reject(Object.assign(new Error('spawn'), { code: 'NO_WORKER' })); }
+      });
+    }
+
+    return { run, runTool, stop, init, get ok() { return booted && !broken; } };
   })();
 
   /* ── toast ─────────────────────────────────────────── */
@@ -839,6 +855,10 @@
       $('#toolPicked').innerHTML = hub.files.map((f) => `<div class="tout"><span class="nm">${f.name}</span><span class="meta">${fmt(f.bytes.length)}</span></div>`).join('');
       $('#toolResults').innerHTML = '';
       $('#toolNote').textContent = '';
+      const tdzTitle = $('#tdzTitle');
+      if (tdzTitle) tdzTitle.textContent = hub.files.length
+        ? (tool.multiple === false ? 'Drop another file to replace' : 'Drop more files to add')
+        : (tool.multiple === false ? 'Drop a file here' : 'Drop files here');
       if (hub.files.length) {
         $('#tState').textContent = `${hub.files.length} file${hub.files.length > 1 ? 's' : ''} ready · press Run`;
       } else {
@@ -864,29 +884,75 @@
     });
   }
 
+  /* a long job needs to look alive: elapsed seconds, and a way out */
+  let runTimer = null, runAbort = false;
+  function startRunClock(stateEl) {
+    const t0 = Date.now();
+    runAbort = false;
+    const cancel = $('#tCancel');
+    if (cancel) cancel.hidden = false;
+    const tick = () => {
+      const s = (Date.now() - t0) / 1000;
+      stateEl.textContent = `working… ${s.toFixed(1)}s`;
+    };
+    tick();
+    runTimer = setInterval(tick, 100);
+    return () => {
+      clearInterval(runTimer); runTimer = null;
+      if (cancel) cancel.hidden = true;
+      return (Date.now() - t0) / 1000;
+    };
+  }
+
+  const tCancel = $('#tCancel');
+  if (tCancel) tCancel.addEventListener('click', () => {
+    runAbort = true;
+    try { Pool.stop(); } catch (e) { /* already gone */ }
+    try { Pool.init(); } catch (e) { /* will report on the next run */ }
+    clearInterval(runTimer); runTimer = null;
+    tCancel.hidden = true;
+    $('#tState').textContent = 'cancelled';
+    $('#toolNote').textContent = 'Stopped. Nothing was changed — run it again whenever you like.';
+  });
+
   const tRun = $('#tRun');
   if (tRun) tRun.addEventListener('click', async () => {
     const tool = hub.tool;
     if (!tool) return;
     const opts = readOpts();
     const stateEl = $('#tState');
+    let stopClock = null;
     try {
-      stateEl.textContent = 'working…';
       tRun.disabled = true;
+      stopClock = startRunClock(stateEl);
       let res;
       if (tool.kind === 'text') {
         res = await tool.run($('#tIn').value, opts);
         $('#tOut').value = res.text != null ? res.text : '';
       } else {
         if (!hub.files.length) throw new Error('choose a file first');
-        res = await tool.run(hub.files, opts);
+        res = null;
+        if (caps.offscreen && Pool.ok) {
+          try { res = await Pool.runTool(tool.id, hub.files, opts); }
+          catch (e) { if (e && e.code !== 'NO_WORKER' && e.code !== 'NO_CANVAS') throw e; res = null; }
+        }
+        if (!res) res = await tool.run(hub.files, opts);
+        if (runAbort) return;
         renderResults(res);
       }
-      $('#toolNote').textContent = res && res.note ? res.note : (res && res.files && res.files[0] && res.files[0].note) || '';
+      const filesRes = res && res.files && res.files.length;
+      $('#toolNote').textContent = filesRes ? (res.note || '') : (res && res.note) || '';
       $('#toolPreview').hidden = !(res && res.preview);
       if (res && res.preview) $('#toolPreview').textContent = res.preview;
-      stateEl.textContent = 'done';
+      const secs = stopClock ? stopClock() : 0;
+      if (!runAbort) stateEl.textContent = secs > 0.6 ? `done in ${secs.toFixed(1)}s` : 'done';
     } catch (err) {
+      if (runAbort) {                       /* the user pressed Cancel: not an error */
+        stateEl.textContent = 'cancelled';
+        $('#toolResults').innerHTML = '';
+        $('#toolNote').textContent = 'Stopped. Nothing was changed — run it again whenever you like.';
+        return;
+      }
       stateEl.textContent = 'error';
       const msg = friendlyError(err);
       $('#toolNote').textContent = '';
@@ -894,6 +960,7 @@
       else $('#toolNote').textContent = msg;
       softError(msg);
     } finally {
+      if (stopClock) stopClock();
       tRun.disabled = false;
     }
   });

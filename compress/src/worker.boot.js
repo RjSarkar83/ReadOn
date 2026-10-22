@@ -20,6 +20,30 @@ self.onmessage = async (ev) => {
     return;
   }
 
+  /* ── file tools (images, PDFs, archives) ────────────────────────────
+     A 12 MP photo takes seconds of pure pixel maths. Running it here means
+     the page never freezes: scrolling, the queue and the spinner keep moving. */
+  if (msg.cmd === 'tool') {
+    const tool = (typeof Tools !== 'undefined') ? Tools.get(msg.toolId) : null;
+    if (!tool) { post({ id: msg.id, type: 'error', message: 'unknown tool' }); return; }
+    try {
+      const res = await tool.run(msg.files || [], msg.opts || {});
+      const files = (res.files || []).map((f) => ({ name: f.name, bytes: f.bytes, note: f.note }));
+      const transfer = files.map((f) => f.bytes && f.bytes.buffer).filter(Boolean);
+      post({ id: msg.id, type: 'done', res: Object.assign({}, res, { files }) }, transfer);
+    } catch (e) {
+      /* some operations (SVG rasterising, <img> decoding) need a real DOM: the page
+         takes those over rather than showing the user an error */
+      const m = String((e && e.message) || e || '');
+      if ((e && e.code === 'NO_CANVAS') || /document is not defined|Image is not defined|not defined|createImageBitmap|OffscreenCanvas/i.test(m)) {
+        post({ id: msg.id, type: 'needmain' });
+      } else {
+        post({ id: msg.id, type: 'error', message: m || 'tool failure' });
+      }
+    }
+    return;
+  }
+
   if (msg.cmd !== 'compress') return;
 
   const { id, file, preset, options } = msg;

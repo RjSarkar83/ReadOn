@@ -55,6 +55,9 @@ NODE_PATH="$ROOT/qa/node_modules" node qa/root_test.js || fail "GitHub Pages roo
 step "7/10 · every tool, end to end"
 NODE_PATH="$ROOT/qa/node_modules" node qa/tools_test.js || fail "tool tests"
 
+step "7b/10 · image tools at pixel level"
+NODE_PATH="$ROOT/qa/node_modules" node qa/image_test.js || fail "image tool quality tests"
+
 step "8/10 · lossless preset proof"
 NODE_PATH="$ROOT/qa/node_modules" node qa/lossless_check.js || fail "lossless preset run"
 python3 qa/lossless_verify.py || fail "lossless pixel proof"

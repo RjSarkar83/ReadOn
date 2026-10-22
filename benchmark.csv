@@ -1,73 +1,73 @@
 file,preset,in_bytes,out_bytes,saved_pct,fidelity,psnr_db,ssim_pct,notes,ms
-text.pdf,lossless,12226,10157,16.9,lossless,,,12 pages | 1 dead objects dropped,42
-text_objstm.pdf,lossless,7463,7311,2.0,lossless,,,12 pages | 3 dead objects dropped | target not reachable without visible damage,32
-photos.pdf,lossless,789722,631991,20.0,lossless,,,6 pages | 2 images re-packed losslessly | 1 dead objects dropped,60
-photos_objstm.pdf,lossless,787494,630349,20.0,lossless,,,6 pages | 2 images re-packed losslessly | 3 dead objects dropped,72
-scan.pdf,lossless,924116,739296,20.0,lossless,,,3 pages | 1 image re-packed losslessly | 1 dead objects dropped,57
-diagram.pdf,lossless,15058,12485,17.1,lossless,,,1 pages | 1 image re-packed losslessly | 1 dead objects dropped,223
-photo1.jpg,lossless,401791,327514,18.5,near,45.0,100.0,re-encoded JPEG q95 | no resampling · SSIM floor 98 %,97
-noise.png,lossless,2547690,2182159,14.3,lossless,,,,932
-diagram.png,lossless,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,528
+text.pdf,lossless,12226,10157,16.9,lossless,,,12 pages | 1 dead objects dropped,57
+text_objstm.pdf,lossless,7463,7311,2.0,lossless,,,12 pages | 3 dead objects dropped | target not reachable without visible damage,39
+photos.pdf,lossless,789722,631991,20.0,lossless,,,6 pages | 2 images re-packed losslessly | 1 dead objects dropped,77
+photos_objstm.pdf,lossless,787494,630349,20.0,lossless,,,6 pages | 2 images re-packed losslessly | 3 dead objects dropped,90
+scan.pdf,lossless,924116,739296,20.0,lossless,,,3 pages | 1 image re-packed losslessly | 1 dead objects dropped,97
+diagram.pdf,lossless,15058,12485,17.1,lossless,,,1 pages | 1 image re-packed losslessly | 1 dead objects dropped,371
+photo1.jpg,lossless,401791,327514,18.5,near,45.0,100.0,re-encoded JPEG q95 | no resampling · SSIM floor 98 %,141
+noise.png,lossless,2547690,2182159,14.3,lossless,,,,1078
+diagram.png,lossless,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,759
 report.docx,lossless,372174,372174,0.0,lossless,,,18 entries re-packed | already tightly packed — nothing safe left to remove,62
-deck.pptx,lossless,242045,242045,0.0,lossless,,,51 entries re-packed | already tightly packed — nothing safe left to remove,101
-data.xlsx,lossless,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,62
-text.pdf,p10,12226,10157,16.9,lossless,,,12 pages | 1 dead objects dropped,36
-text_objstm.pdf,p10,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped,60
-photos.pdf,p10,789722,631991,20.0,lossless,,,6 pages | 2 images re-packed losslessly | 1 dead objects dropped,63
-photos_objstm.pdf,p10,787494,630349,20.0,lossless,,,6 pages | 2 images re-packed losslessly | 3 dead objects dropped,66
-scan.pdf,p10,924116,739296,20.0,lossless,,,3 pages | 1 image re-packed losslessly | 1 dead objects dropped,59
-diagram.pdf,p10,15058,12485,17.1,lossless,,,1 pages | 1 image re-packed losslessly | 1 dead objects dropped,215
-photo1.jpg,p10,401791,327514,18.5,lossy,45.0,100.0,re-encoded JPEG q95,104
-noise.png,p10,2547690,2182159,14.3,lossless,,,,998
-diagram.png,p10,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,844
-report.docx,p10,372174,372174,0.0,lossless,,,18 entries re-packed | already tightly packed — nothing safe left to remove,67
-deck.pptx,p10,242045,242045,0.0,lossless,,,51 entries re-packed | already tightly packed — nothing safe left to remove,102
-data.xlsx,p10,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,63
-text.pdf,p25,12226,5426,55.6,invisible,,,12 pages | text layer + fonts removed | 1 dead objects dropped,40
-text_objstm.pdf,p25,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped,33
-photos.pdf,p25,789722,478887,39.4,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 1 dead objects dropped,165
-photos_objstm.pdf,p25,787494,477245,39.4,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 3 dead objects dropped,164
-scan.pdf,p25,924116,546805,40.8,lossy,,,3 pages | 1 image re-encoded | 1 dead objects dropped,451
-diagram.pdf,p25,15058,12441,17.4,invisible,,,1 pages | text layer + fonts removed | 1 image re-packed losslessly | 1 dead objects dropped | target not reachable without visible damage,559
-photo1.jpg,p25,401791,300726,25.2,lossy,43.7,100.0,re-encoded JPEG q94,137
-noise.png,p25,2547690,885827,65.2,lossy,48.6,100.0,re-encoded JPEG q97,1128
-diagram.png,p25,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,784
-report.docx,p25,372174,175254,52.9,lossy,,,18 entries re-packed | 2 embedded images re-encoded,88
-deck.pptx,p25,242045,124008,48.8,lossy,,,51 entries re-packed | 2 embedded images re-encoded,120
-data.xlsx,p25,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,61
-text.pdf,p50,12226,5426,55.6,invisible,,,12 pages | text layer + fonts removed | 1 dead objects dropped,41
-text_objstm.pdf,p50,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped,30
-photos.pdf,p50,789722,347299,56.0,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 1 dead objects dropped,209
-photos_objstm.pdf,p50,787494,345657,56.1,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 3 dead objects dropped,203
-scan.pdf,p50,924116,332058,64.1,lossy,,,3 pages | 1 image re-encoded | 1 dead objects dropped,527
-diagram.pdf,p50,15058,12441,17.4,invisible,,,1 pages | text layer + fonts removed | 1 image re-packed losslessly | 1 dead objects dropped | target not reachable without visible damage,547
-photo1.jpg,p50,401791,177935,55.7,lossy,40.5,100.0,re-encoded JPEG q86,211
-noise.png,p50,2547690,885827,65.2,lossy,48.6,100.0,re-encoded JPEG q97,1128
-diagram.png,p50,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,776
-report.docx,p50,372174,134490,63.9,lossy,,,18 entries re-packed | 2 embedded images re-encoded,90
-deck.pptx,p50,242045,97278,59.8,lossy,,,51 entries re-packed | 2 embedded images re-encoded,109
-data.xlsx,p50,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,59
-text.pdf,p75,12226,5426,55.6,invisible,,,12 pages | text layer + fonts removed | 1 dead objects dropped | target not reachable without visible damage,38
-text_objstm.pdf,p75,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped | target not reachable without visible damage,30
-photos.pdf,p75,789722,191149,75.8,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 1 dead objects dropped,307
-photos_objstm.pdf,p75,787494,189508,75.9,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 3 dead objects dropped,303
-scan.pdf,p75,924116,208611,77.4,lossy,,,3 pages | 1 image re-encoded | 1 dead objects dropped,567
-diagram.pdf,p75,15058,12441,17.4,invisible,,,1 pages | text layer + fonts removed | 1 image re-packed losslessly | 1 dead objects dropped | target not reachable without visible damage,564
-photo1.jpg,p75,401791,95598,76.2,lossy,36.6,99.9,re-encoded JPEG q62 | resampled to 1500×1125,359
-noise.png,p75,2547690,592170,76.8,lossy,36.3,99.4,re-encoded JPEG q86,1633
-diagram.png,p75,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,726
-report.docx,p75,372174,111905,69.9,lossy,,,18 entries re-packed | 2 embedded images re-encoded,86
-deck.pptx,p75,242045,84429,65.1,lossy,,,51 entries re-packed | 2 embedded images re-encoded,98
-data.xlsx,p75,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,55
-text.pdf,p90,12226,5426,55.6,invisible,,,12 pages | text layer + fonts removed | 1 dead objects dropped | target not reachable without visible damage,36
-text_objstm.pdf,p90,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped | target not reachable without visible damage,28
-photos.pdf,p90,789722,65972,91.6,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 1 dead objects dropped,370
-photos_objstm.pdf,p90,787494,64329,91.8,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 3 dead objects dropped,374
-scan.pdf,p90,924116,88749,90.4,lossy,,,3 pages | 1 image re-encoded | 1 dead objects dropped,635
-diagram.pdf,p90,15058,12441,17.4,invisible,,,1 pages | text layer + fonts removed | 1 image re-packed losslessly | 1 dead objects dropped | target not reachable without visible damage,569
-photo1.jpg,p90,401791,32831,91.8,lossy,31.0,99.8,re-encoded JPEG q34 | resampled to 900×675,421
-noise.png,p90,2547690,1214002,52.3,lossy,23.2,84.8,re-encoded PNG | resampled to 1050×788,2865
-diagram.png,p90,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,766
-report.docx,p90,372174,97060,73.9,lossy,,,18 entries re-packed | 2 embedded images re-encoded,89
-deck.pptx,p90,242045,74667,69.2,lossy,,,51 entries re-packed | 2 embedded images re-encoded,129
-data.xlsx,p90,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,58
+deck.pptx,lossless,242045,242045,0.0,lossless,,,51 entries re-packed | already tightly packed — nothing safe left to remove,109
+data.xlsx,lossless,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,66
+text.pdf,p10,12226,10157,16.9,lossless,,,12 pages | 1 dead objects dropped,47
+text_objstm.pdf,p10,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped,66
+photos.pdf,p10,789722,631991,20.0,lossless,,,6 pages | 2 images re-packed losslessly | 1 dead objects dropped,76
+photos_objstm.pdf,p10,787494,630349,20.0,lossless,,,6 pages | 2 images re-packed losslessly | 3 dead objects dropped,87
+scan.pdf,p10,924116,739296,20.0,lossless,,,3 pages | 1 image re-packed losslessly | 1 dead objects dropped,72
+diagram.pdf,p10,15058,12485,17.1,lossless,,,1 pages | 1 image re-packed losslessly | 1 dead objects dropped,304
+photo1.jpg,p10,401791,327514,18.5,lossy,45.0,100.0,re-encoded JPEG q95,128
+noise.png,p10,2547690,2182159,14.3,lossless,,,,1059
+diagram.png,p10,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,1105
+report.docx,p10,372174,372174,0.0,lossless,,,18 entries re-packed | already tightly packed — nothing safe left to remove,70
+deck.pptx,p10,242045,242045,0.0,lossless,,,51 entries re-packed | already tightly packed — nothing safe left to remove,93
+data.xlsx,p10,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,62
+text.pdf,p25,12226,5426,55.6,invisible,,,12 pages | text layer + fonts removed | 1 dead objects dropped,43
+text_objstm.pdf,p25,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped,34
+photos.pdf,p25,789722,478887,39.4,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 1 dead objects dropped,206
+photos_objstm.pdf,p25,787494,477245,39.4,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 3 dead objects dropped,215
+scan.pdf,p25,924116,546805,40.8,lossy,,,3 pages | 1 image re-encoded | 1 dead objects dropped,631
+diagram.pdf,p25,15058,12441,17.4,invisible,,,1 pages | text layer + fonts removed | 1 image re-packed losslessly | 1 dead objects dropped | target not reachable without visible damage,765
+photo1.jpg,p25,401791,300726,25.2,lossy,43.7,100.0,re-encoded JPEG q94,179
+noise.png,p25,2547690,885827,65.2,lossy,48.6,100.0,re-encoded JPEG q97,1282
+diagram.png,p25,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,1167
+report.docx,p25,372174,175254,52.9,lossy,,,18 entries re-packed | 2 embedded images re-encoded,137
+deck.pptx,p25,242045,124008,48.8,lossy,,,51 entries re-packed | 2 embedded images re-encoded,160
+data.xlsx,p25,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,69
+text.pdf,p50,12226,5426,55.6,invisible,,,12 pages | text layer + fonts removed | 1 dead objects dropped,42
+text_objstm.pdf,p50,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped,34
+photos.pdf,p50,789722,347299,56.0,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 1 dead objects dropped,237
+photos_objstm.pdf,p50,787494,345657,56.1,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 3 dead objects dropped,236
+scan.pdf,p50,924116,332058,64.1,lossy,,,3 pages | 1 image re-encoded | 1 dead objects dropped,794
+diagram.pdf,p50,15058,12441,17.4,invisible,,,1 pages | text layer + fonts removed | 1 image re-packed losslessly | 1 dead objects dropped | target not reachable without visible damage,736
+photo1.jpg,p50,401791,177935,55.7,lossy,40.5,100.0,re-encoded JPEG q86,271
+noise.png,p50,2547690,885827,65.2,lossy,48.6,100.0,re-encoded JPEG q97,1284
+diagram.png,p50,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,1029
+report.docx,p50,372174,134490,63.9,lossy,,,18 entries re-packed | 2 embedded images re-encoded,105
+deck.pptx,p50,242045,97278,59.8,lossy,,,51 entries re-packed | 2 embedded images re-encoded,123
+data.xlsx,p50,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,63
+text.pdf,p75,12226,5426,55.6,invisible,,,12 pages | text layer + fonts removed | 1 dead objects dropped | target not reachable without visible damage,42
+text_objstm.pdf,p75,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped | target not reachable without visible damage,39
+photos.pdf,p75,789722,191149,75.8,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 1 dead objects dropped,375
+photos_objstm.pdf,p75,787494,189508,75.9,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 3 dead objects dropped,345
+scan.pdf,p75,924116,208611,77.4,lossy,,,3 pages | 1 image re-encoded | 1 dead objects dropped,915
+diagram.pdf,p75,15058,12441,17.4,invisible,,,1 pages | text layer + fonts removed | 1 image re-packed losslessly | 1 dead objects dropped | target not reachable without visible damage,746
+photo1.jpg,p75,401791,95598,76.2,lossy,36.6,99.9,re-encoded JPEG q62 | resampled to 1500×1125,479
+noise.png,p75,2547690,592170,76.8,lossy,36.3,99.4,re-encoded JPEG q86,2041
+diagram.png,p75,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,1078
+report.docx,p75,372174,111905,69.9,lossy,,,18 entries re-packed | 2 embedded images re-encoded,105
+deck.pptx,p75,242045,84429,65.1,lossy,,,51 entries re-packed | 2 embedded images re-encoded,115
+data.xlsx,p75,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,64
+text.pdf,p90,12226,5426,55.6,invisible,,,12 pages | text layer + fonts removed | 1 dead objects dropped | target not reachable without visible damage,69
+text_objstm.pdf,p90,7463,2567,65.6,invisible,,,12 pages | text layer + fonts removed | 3 dead objects dropped | target not reachable without visible damage,47
+photos.pdf,p90,789722,65972,91.6,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 1 dead objects dropped,521
+photos_objstm.pdf,p90,787494,64329,91.8,invisible,,,6 pages | text layer + fonts removed | 2 images re-encoded | 3 dead objects dropped,557
+scan.pdf,p90,924116,88749,90.4,lossy,,,3 pages | 1 image re-encoded | 1 dead objects dropped,1066
+diagram.pdf,p90,15058,12441,17.4,invisible,,,1 pages | text layer + fonts removed | 1 image re-packed losslessly | 1 dead objects dropped | target not reachable without visible damage,741
+photo1.jpg,p90,401791,32831,91.8,lossy,31.0,99.8,re-encoded JPEG q34 | resampled to 900×675,598
+noise.png,p90,2547690,1214002,52.3,lossy,23.2,84.8,re-encoded PNG | resampled to 1050×788,3221
+diagram.png,p90,11421,11198,2.0,lossless,,,no pixel-safe path to the target — kept the untouched encode,1083
+report.docx,p90,372174,97060,73.9,lossy,,,18 entries re-packed | 2 embedded images re-encoded,106
+deck.pptx,p90,242045,74667,69.2,lossy,,,51 entries re-packed | 2 embedded images re-encoded,115
+data.xlsx,p90,237311,237311,0.0,lossless,,,9 entries re-packed | already tightly packed — nothing safe left to remove,69

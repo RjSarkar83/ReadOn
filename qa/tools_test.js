@@ -327,7 +327,7 @@ function validate(kind, file) {
     await page.waitForTimeout(400);
     let ok = false, out = '', detail = '';
     try {
-      await page.waitForFunction(() => document.querySelector('#tState').textContent === 'done' || document.querySelector('#tState').textContent === 'error', null, { timeout: 20000 });
+      await page.waitForFunction(() => /^(done|error|cancelled)/i.test(document.querySelector('#tState').textContent.trim()), null, { timeout: 20000 });
       out = await page.inputValue('#tOut');
       ok = verify(out);
       detail = ok ? `${out.length} chars` : `unexpected: ${JSON.stringify(out.slice(0, 60))}`;
