@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   app.js — ReadOn · Compress front-end
+   app.js — ArtViSiON · Tools front-end
    ══════════════════════════════════════════════════════════════ */
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
@@ -23,9 +23,9 @@
   };
 
   /* ── theme ─────────────────────────────────────────── */
-  const THEMES = ['dark', 'light', 'sepia'];
-  const THEME_LABEL = { dark: 'Dark', light: 'Light', sepia: 'Sepia' };
-  const THEME_ICON = { dark: '#i-moon', light: '#i-sun', sepia: '#i-sun' };
+  const THEMES = ['light', 'dark', 'sepia'];
+  const THEME_LABEL = { light: 'Light', dark: 'Dark', sepia: 'Warm' };
+  const THEME_ICON = { light: '#i-sun', dark: '#i-moon', sepia: '#i-drop' };
   function applyTheme(t) {
     document.documentElement.dataset.theme = t;
     $('#themeLbl').textContent = THEME_LABEL[t];
@@ -33,10 +33,10 @@
     store.set('theme', t);
   }
   $('#themeBtn').addEventListener('click', () => {
-    const cur = document.documentElement.dataset.theme || 'dark';
+    const cur = document.documentElement.dataset.theme || 'light';
     applyTheme(THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length]);
   });
-  applyTheme(store.get('theme', 'dark'));
+  applyTheme(store.get('theme', 'light'));
 
   /* ── presets ───────────────────────────────────────── */
   function renderPresets() {
@@ -575,7 +575,7 @@
     });
     toast('packing zip…');
     const zip = await ZipCodec.write(entries);
-    download(zip, 'readon-compressed.zip', 'application/zip');
+    download(zip, 'artvision-compressed.zip', 'application/zip');
     toast('zip ready');
   });
 
@@ -719,7 +719,7 @@
       </div>`).join('');
     const n = Tools.list.length;
     const cnt = $('#hubCount');
-    if (cnt) cnt.textContent = `${n} working tools · every byte stays in this tab`;
+    if (cnt) cnt.textContent = `${n} tools · everything runs here · nothing is uploaded`;
     $$('.tcard', wrap).forEach((card) => card.addEventListener('click', () => openTool(card.dataset.tool)));
   }
 
@@ -987,7 +987,7 @@
       all.addEventListener('click', async () => {
         try {
           const z = await ZipCodec.write(files.map((f) => ({ name: f.name, data: f.bytes })));
-          saveBytes(z, 'readon-tools.zip');
+          saveBytes(z, 'artvision-tools.zip');
         } catch (e) { toast('packing failed: ' + e.message); }
       });
       box.appendChild(all);
@@ -1034,12 +1034,12 @@
   });
 
   const SAMPLE = {
-    default: 'Hello from ReadOn — paste anything here.',
-    'json-format': '{"site":"ReadOn","tools":50,"local":true,"items":[1,2,3]}',
+    default: 'Hello from ArtViSiON — paste anything here.',
+    'json-format': '{"site":"ArtViSiON","tools":50,"local":true,"items":[1,2,3]}',
     'csv-json': 'name,role,size\nphotos.pdf,compressed,51 KB\nphoto1.jpg,webp,18 KB',
-    'md-html': '# ReadOn\n\n**Fast**, private, *local* tools.\n\n- compress\n- upscale\n- merge',
-    'count': 'ReadOn Compress runs every tool inside your browser tab. Nothing is uploaded, ever.',
-    'color': '#D75A5A',
+    'md-html': '# ArtViSiON\n\n**Fast**, private, *local* tools.\n\n- compress\n- upscale\n- merge',
+    'count': 'ArtViSiON Tools runs every tool inside your browser tab. Nothing is uploaded, ever.',
+    'color': '#E08D7B',
     'time': '2026-10-22T09:00:00Z',
     'lorem': '',
     'uuid': ''

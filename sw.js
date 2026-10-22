@@ -1,4 +1,4 @@
-/* ReadOn · Compress — offline shell
+/* ArtViSiON · Tools — offline shell
    Caches the app itself so it keeps working with no connection.
    Compression never touches the network; this only makes install/offline possible.
    The same file is served from the repo root and from /compress/. */

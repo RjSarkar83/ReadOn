@@ -52,7 +52,7 @@ server.listen(PORT, '127.0.0.1', async () => {
       icons: [...document.querySelectorAll('link[rel*="icon"]')].length
     };
   });
-  check('repo root serves the app (index.html)', s.title.includes('Compress') && s.tools >= 100,
+  check('repo root serves the app (index.html)', s.title.includes('ArtViSiON') && s.tools >= 100,
     `${s.tools} tools · ${s.presets} presets`);
   check('engine is live at the root', s.engine === 'object', s.engine);
   check('service worker registers with root scope', s.reg === 'active' && s.scope === base + '/', s.scope);

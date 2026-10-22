@@ -99,7 +99,7 @@ const openTool = async (page, id) => {
   const relRoot = await page.getAttribute('#readerLink', 'href');
   await Promise.all([page.waitForNavigation(), page.click('#readerLink')]);
   await page.waitForTimeout(900);
-  check('Reader opens from the repo root', /reader\.html$/.test(page.url()) && (await page.title()).includes('ReadOn'), `${relRoot} → ${page.url().split('/').pop()}`);
+  check('Reader opens from the repo root', /reader\.html$/.test(page.url()) && (await page.title()).includes('ArtViSiON'), `${relRoot} → ${page.url().split('/').pop()}`);
   const engines = await page.evaluate(() => ({ pdf: typeof pdfjsLib, docx: typeof mammoth, zip: typeof JSZip, pdfOut: typeof jspdf }));
   check('Reader engines load (bundled, not CDN)', Object.values(engines).every((t) => t !== 'undefined'), JSON.stringify(engines));
   await page.setInputFiles('#file', path.join(FIX, 'text.pdf'));

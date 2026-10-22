@@ -1,6 +1,6 @@
 # Compression engineering — specification
 
-ReadOn · Compress is not a wrapper around a quality slider. It is a small, purpose-built
+ArtViSiON · Tools is not a wrapper around a quality slider. It is a small, purpose-built
 document/image optimiser that runs entirely in the browser. This document describes the
 algorithms, the order in which they are applied, the quality gates, and how the claims were
 verified.

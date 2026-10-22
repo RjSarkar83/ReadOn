@@ -1,45 +1,60 @@
 /* ══════════════════════════════════════════════════════════════
-   ReadOn · Compress — production stylesheet
-   Same tokens, type scale and material language as ReadOn.
+   ArtViSiON · Tools — production stylesheet
+   Soft pastel palette, generous spacing, one accent, no glare.
+   Tokens keep their old names so nothing else had to change.
    ══════════════════════════════════════════════════════════════ */
 :root{
-  --r:#D75A5A; --r-hov:#E06F6F; --r-ink:#C94E4E;
-  --r1:rgba(215,90,90,.10); --r2:rgba(215,90,90,.22);
-  --gold:#BFA873; --gold1:rgba(191,168,115,.10); --gold2:rgba(191,168,115,.28);
-  --ok:#6FBF94; --ok1:rgba(111,191,148,.12);
-  --warn:#C9A227; --warn1:rgba(201,162,39,.14);
+  /* accent (soft coral) + the pastel family */
+  --r:#E08D7B; --r-hov:#EB9E8D; --r-ink:#C9745F;
+  --r1:rgba(224,141,123,.12); --r2:rgba(224,141,123,.26);
+  --gold:#C8A97E; --gold1:rgba(200,169,126,.12); --gold2:rgba(200,169,126,.30);
+  --sage:#8FB6A0; --sage1:rgba(143,182,160,.14);
+  --lilac:#AFA0D0; --lilac1:rgba(175,160,208,.14);
+  --sky:#93B8D4; --sky1:rgba(147,184,212,.14);
+  --butter:#EFD9A8; --butter1:rgba(239,217,168,.18);
+  --ok:#7FB495; --ok1:rgba(127,180,149,.14);
+  --warn:#C9A24E; --warn1:rgba(201,162,78,.16);
   --ff:'Montserrat',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
   --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
   --ease:cubic-bezier(.4,0,.2,1);
-  --hdr:48px;
-  --rad:2px;
+  --hdr:52px;
+  --rad:12px;
 }
-[data-theme="dark"]{
-  --bg:#373A3E; --s1:#2E3135; --s2:#404449; --s3:#272A2E; --s4:#23262A;
-  --b1:#4B5056; --b2:#656C73; --b3:#7B838B;
-  --tx:#F1F3F4; --t2:#B7BEC4; --t3:#8D959C;
-  --pane:rgba(46,49,53,.97); --paper:#F4F0EA;
-  --shadow:0 22px 48px rgba(0,0,0,.38); --glow:rgba(215,90,90,.30);
-  --track:#3A3E43;
-}
+/* ArtViSiON light — warm cream paper, the default */
 [data-theme="light"]{
-  --bg:#EEF0F2; --s1:#F8F9FA; --s2:#E3E6E8; --s3:#FFFFFF; --s4:#FDFDFD;
-  --b1:#D0D5D9; --b2:#AEB6BC; --b3:#8C959C;
-  --tx:#171B1E; --t2:#4E5A62; --t3:#6D787F;
-  --pane:rgba(248,249,250,.97); --paper:#FFFFFF;
-  --shadow:0 18px 40px rgba(20,25,30,.13); --glow:rgba(201,78,78,.20);
-  --track:#DDE1E4;
+  --bg:#F8F4EF; --s1:#FFFCF8; --s2:#F2EBE3; --s3:#FFFFFF; --s4:#FCF8F3;
+  --b1:#EADFD3; --b2:#D9CABB; --b3:#B8A796;
+  --tx:#2F2A26; --t2:#615A53; --t3:#8B8178;
+  --pane:rgba(255,252,248,.96); --paper:#FFFFFF;
+  --shadow:0 14px 34px rgba(90,70,50,.09); --shadow-sm:0 4px 14px rgba(90,70,50,.06);
+  --glow:rgba(224,141,123,.20);
+  --track:#EFE5DA;
 }
+/* ArtViSiON dark — soft warm charcoal, no pure black */
+[data-theme="dark"]{
+  --bg:#262220; --s1:#2E2A27; --s2:#383330; --s3:#332F2C; --s4:#211E1C;
+  --b1:#453E39; --b2:#5B524B; --b3:#756A61;
+  --tx:#F6F0E9; --t2:#CFC5BA; --t3:#9C9086;
+  --pane:rgba(46,42,39,.97); --paper:#F8F4EF;
+  --shadow:0 20px 44px rgba(0,0,0,.34); --shadow-sm:0 4px 14px rgba(0,0,0,.22);
+  --glow:rgba(232,166,150,.26);
+  --track:#3B3531;
+}
+/* ArtViSiON warm — aged paper, for long reading sessions */
 [data-theme="sepia"]{
-  --bg:#E4D7BF; --s1:#EDE2CC; --s2:#DFD2B8; --s3:#F3EBDA; --s4:#F8F1E2;
-  --b1:#C6B596; --b2:#A78D69; --b3:#877050;
-  --tx:#33291C; --t2:#5C4F3A; --t3:#7A6A52;
-  --pane:rgba(237,226,204,.97); --paper:#F6EDD9;
-  --shadow:0 18px 40px rgba(90,70,40,.20); --glow:rgba(191,120,60,.25);
-  --track:#D9CBB0;
+  --bg:#F3E7D5; --s1:#FAF1E3; --s2:#EFE1CB; --s3:#FFF9EF; --s4:#FBF3E6;
+  --b1:#E2D2B8; --b2:#CBAB84; --b3:#9E8A6E;
+  --tx:#3A3025; --t2:#61523F; --t3:#8A7860;
+  --pane:rgba(250,241,227,.96); --paper:#FFFAF1;
+  --shadow:0 14px 34px rgba(120,95,60,.14); --shadow-sm:0 4px 14px rgba(120,95,60,.09);
+  --glow:rgba(224,141,123,.22);
+  --track:#EBDCC4;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;color-scheme:light}
+[data-theme="light"]{color-scheme:light}
+[data-theme="dark"]{color-scheme:dark}
+[data-theme="sepia"]{color-scheme:light}
 body{
   background:var(--bg);color:var(--tx);font-family:var(--ff);
   font-size:13px;line-height:1.55;min-height:100vh;
@@ -76,9 +91,9 @@ h1,h2,h3{font-weight:800;letter-spacing:.5px}
 .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit}
 .brand .mark{display:grid;place-items:center}
 
-.brand .mark img{width:44px;height:25px;display:block;object-fit:contain}
+.brand .mark img{width:auto;height:30px;display:block;object-fit:contain}
 .brand:hover .mark{filter:brightness(1.12)}
-.brand b{font-size:12px;font-weight:800;letter-spacing:4.2px;text-transform:uppercase}
+.brand b{font-size:12.5px;font-weight:800;letter-spacing:3.4px;text-transform:uppercase}
 .brand i{font-style:normal;color:var(--r)}
 .brand em{
   font-style:normal;font-size:8px;letter-spacing:2.4px;text-transform:uppercase;
@@ -297,11 +312,11 @@ h1,h2,h3{font-weight:800;letter-spacing:.5px}
 .cmp .handle{position:absolute;top:0;bottom:0;width:2px;background:var(--r);cursor:ew-resize}
 .cmp .handle::after{
   content:'';position:absolute;top:50%;left:50%;width:26px;height:26px;margin:-13px 0 0 -13px;
-  border-radius:50%;background:var(--r);border:2px solid #fff3;box-shadow:0 2px 10px rgba(0,0,0,.4);
+  border-radius:50%;background:var(--r);border:2px solid var(--s1);box-shadow:0 2px 10px rgba(90,70,50,.18);
 }
 .cmp .tagA,.cmp .tagB{
   position:absolute;top:8px;font-size:7px;letter-spacing:1.2px;text-transform:uppercase;
-  padding:3px 7px;border-radius:2px;background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(4px);
+  padding:3px 7px;border-radius:8px;background:rgba(47,42,38,.62);color:#fff;backdrop-filter:blur(4px);
 }
 .cmp .tagA{left:8px} .cmp .tagB{right:8px}
 .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--b1);border:1px solid var(--b1);margin-top:12px}
@@ -378,7 +393,7 @@ h1,h2,h3{font-weight:800;letter-spacing:.5px}
 .tcard.feature b{font-size:14px}
 @media (max-width:760px){.tcard.feature{grid-column:span 2}}
 
-/* ══ tool hub (iLovePDF-style card grid, ReadOn material) ══════════════ */
+/* ══ tool hub (iLovePDF-style card grid, ArtViSiON material) ══════════════ */
 .hubhead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:2px 0 14px}
 .hubhead h1{font-size:22px;font-weight:800;letter-spacing:4px;text-transform:uppercase}
 .hubhead h1 span{color:var(--r)}
@@ -417,7 +432,13 @@ h1,h2,h3{font-weight:800;letter-spacing:.5px}
 .opt select,.opt input[type="number"],.opt input[type="text"]{
   border:1px solid var(--b1);background:var(--s2);color:var(--tx);border-radius:7px;padding:8px 10px;font:inherit;font-size:11px;outline:none}
 .opt select:focus,.opt input:focus{border-color:var(--r)}
-.opt input[type="range"]{accent-color:var(--r);width:100%}
+.opt input[type="range"]{accent-color:var(--r);width:100%;height:22px;background:transparent}
+.opt input[type="range"]::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:var(--track)}
+.opt input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:18px;height:18px;margin-top:-6px;border-radius:50%;
+  background:var(--r);border:2px solid var(--s1);box-shadow:0 2px 6px rgba(90,70,50,.10)}
+.opt input[type="range"]::-moz-range-track{height:6px;border-radius:99px;background:var(--track)}
+.opt input[type="range"]::-moz-range-thumb{width:16px;height:16px;border:2px solid var(--s1);border-radius:50%;background:var(--r)}
 .opt .val{font-size:9px;color:var(--t3)}
 .ta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ta textarea{

@@ -1,9 +1,9 @@
-# ReadOn · Tools
+# ArtViSiON · Tools
 
 **108 working tools in one static page.** The compressor is still the centre of it — a
 production-grade, **100 % client-side shrinker** for PDF, JPG, PNG, WebP, GIF, BMP, SVG, DOCX,
 PPTX, XLSX, EPUB/ODT, ZIP, JSON, HTML, CSS, JS, XML, TXT/CSV — and around it now sits a
-[ilovepdf](https://www.ilovepdf.com/)-style tool grid in ReadOn's own material language:
+[ilovepdf](https://www.ilovepdf.com/)-style tool grid in ArtViSiON's own soft-pastel language:
 merge/split/rotate/number/watermark PDFs, **enhance** and **upscale** images, convert, favicon
 packs, DOCX/PPTX→text, XLSX↔CSV, PDF merging/splitting, and 64 text, code, crypto and
 calculator utilities.
@@ -15,7 +15,7 @@ tablets and desktops, in old Safari and in stripped-down webviews, and it is ins
 offline (PWA).
 
 ```
-├── index.html                     ← ReadOn home page (+ one Compress button)
+├── index.html                     ← the app as GitHub Pages serves it (same file as compress/index.html)
 ├── compress/
 │   ├── index.html                 ← the whole app: one self-contained file, no CDN, no build step
 │   ├── build.js                   ← optional: re-bundles src/ → index.html (page + inline worker)
@@ -23,10 +23,10 @@ offline (PWA).
 │   ├── icon-192.png / icon-512.png
 │   └── src/
 │       ├── index.template.html
-│       ├── app.css                ← ReadOn tokens, dark / light / sepia
+│       ├── app.css                ← ArtViSiON tokens · light / dark / warm pastel
 │       ├── app.js                 ← queue, presets, compare slider, zip export, worker pool
 │       ├── engine.js              ← preset ladder, format dispatch, fidelity gates
-│       ├── tools.js               ← the 60-tool registry (every tool is real code)
+│       ├── tools.js               ← the 108-tool registry (every tool is real code)
 │       ├── worker.boot.js         ← Web Worker entry (same engine, background thread)
 │       └── lib/
 │           ├── codec-js.js        ← pure-JS DEFLATE/INFLATE + gzip (fallback when no native streams)
@@ -41,7 +41,7 @@ offline (PWA).
 │           ├── jpeg.js            ← lossless JPEG re-container
 │           ├── zip.js             ← ZIP/Office reader + writer
 │           └── imaging.js         ← raster decode/resample/encode + PSNR/SSIM
-├── pwa/sw.js                      ← service worker (cache-first shell, offline)
+├── sw.js                          ← service worker (cache-first shell, offline)
 ├── qa/                            ← automated quality gate (see §5)
 ├── screenshots/                   ← the shipped build, dark / light / phone / compare
 ├── benchmark.csv                  ← 72 measured runs
@@ -63,7 +63,6 @@ repo root and opens the compressor directly**. Nothing to click, nothing to hunt
 ├── sw.js                   ← offline shell (root scope)
 ├── manifest.webmanifest    ← installable PWA (start_url ./index.html)
 ├── icon-192.png, icon-512.png
-├── readon-home.html        ← your original ReadOn home page, untouched
 ├── .nojekyll               ← required, or Pages skips files starting with "_"
 ├── README.md · COMPRESSION.md · CHANGELOG.md · TOOLS.md · benchmark.csv
 └── qa/                     ← the 10-stage test suite (not needed to run the app)
@@ -71,14 +70,7 @@ repo root and opens the compressor directly**. Nothing to click, nothing to hunt
 
 1. Unzip into the repo, commit, push.
 2. Settings → Pages → *Deploy from a branch* → `main` / `/ (root)`.
-3. Live at **`https://<user>.github.io/ReadOn/`** — and **`/ReadOn/compress/`** serves the same build.
-
-**Keeping your old home page as the front door?** Rename it back:
-
-```bash
-mv readon-home.html index.html      # ReadOn home page at /
-# the compressor then lives at /compress/ only — both files still work
-```
+3. Live at **`https://<user>.github.io/<repo>/`** — and `/<repo>/compress/` serves the same build.
 
 `make_zip.py` re-syncs `index.html`, `sw.js`, the manifest and the icons from `compress/` on every
 packaging run, so the root copy can never drift from the tested build.
@@ -154,21 +146,38 @@ pool of Web Workers, the queue advances in parallel lanes, and **Stop** is alway
 
 ## 2 · Brand
 
-The ReadOn mark lives in **`assets/readon-mark-original.png`** (the delivered artwork, untouched).
-The header and the reader embed it inline; the icons are that same file composited on its own black
-tile. `node assets/make_icons.js` derives every size from it —
-`favicon.svg`, `favicon-16/32.png`, `apple-touch-icon.png`, `icon-192/512.png`,
-`icon-512-maskable.png` and the social card — and syncs the copies used by `/`, `/compress/` and
-`/pwa/`, so the icon in the tab, in the header and on the home screen is always the same artwork.
+The mark is the brand owner's own artwork — **`assets/artvision-logo.png`**, the delivered file,
+untouched (nothing redrawn, nothing recoloured). It is drawn in the header and embedded inline (6.7 KB,
+no extra request), and every other size is derived from that one file:
+
+```
+python3 assets/make_icons.py      # Pillow
+```
+
+which writes `favicon.svg`, `favicon-16/32.png`, `apple-touch-icon.png`, `icon-192/512.png`,
+`icon-512-maskable.png` and the social card, so the icon in the tab, in the header and on the home
+screen can never drift apart.
+
+**Palette.** One soft coral accent (`#E08D7B`) on three calm surfaces, with a pastel family
+(`--sage`, `--lilac`, `--sky`, `--butter`) for status and categories:
+
+| theme | page | panel | text | when |
+|---|---|---|---|---|
+| **Light** (default) | `#F8F4EF` warm cream | `#FFFCF8` | `#2F2A26` | the first impression, daylight |
+| **Dark** | `#262220` warm charcoal | `#2E2A27` | `#F6F0E9` | night, low-light |
+| **Warm** | `#F3E7D5` aged paper | `#FAF1E3` | `#3A3025` | long reading sessions |
+
+One radius (12 px), soft warm shadows, no pure black and no saturated red anywhere. `color-scheme` is
+declared per theme, so native selects, scrollbars and date pickers match instead of fighting the page.
 
 ## 2a · Two apps in one repo
 
 | Page | What it is |
 |---|---|
-| `reader.html` | the **ReadOn reader** — PDF, Word and PowerPoint opened as a book, read aloud in 22 languages, translated and analysed. Its engines (pdf.js, mammoth, JSZip, jsPDF) are **bundled in `vendor/`**, so it works with the CDN blocked or fully offline; the CDN is only a fallback. |
+| `reader.html` | the **ArtViSiON reader** — PDF, Word and PowerPoint opened as a book, read aloud in 22 languages, translated and analysed. Its engines (pdf.js, mammoth, JSZip, jsPDF) are **bundled in `vendor/`**, so it works with the CDN blocked or fully offline; the CDN is only a fallback. |
 | `index.html` (`compress/`) | the **108 tools** + the 7-level compressor. |
 
-Both link to each other with relative paths, so `/Reader/` and `/ReadOn/` both work and nothing points
+Both link to each other with relative paths, so the reader and the tools both work from any repo name and nothing points
 at another person's site. `qa/ux_test.js` clicks the Reader link from both locations, opens a real PDF
 in it and comes back.
 
@@ -221,8 +230,9 @@ tree, objects are imported with renamed references, and the result is re-parsed 
 
 ## 4 · UI
 
-Same material language as ReadOn: Montserrat, charcoal `#373A3E` / light / sepia, `#D75A5A`
-accent, hairline borders, 8 pt uppercase micro-labels.
+ArtViSiON's own material language: Montserrat, warm cream / warm charcoal / aged paper surfaces,
+a soft coral `#E08D7B` accent, 12 px radii, soft warm shadows and 8 pt uppercase micro-labels. Light is
+the default theme; dark and warm are one tap away.
 
 * Drag & drop, click-to-browse, ⌘/Ctrl + V paste, ⌘/Ctrl + O — unlimited batch.
 * Live queue with per-file badge, PSNR · SSIM, and exactly what was done in plain English.

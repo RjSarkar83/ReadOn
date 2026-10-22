@@ -117,7 +117,7 @@ const TEXT_PLAN = {
   'slug': ['Hello World! 2026', (t) => t === 'hello-world-2026'],
   'lorem': ['', (t) => t.split('\n\n').length >= 3],
   'time': ['', (t) => t.includes('ISO 8601')],
-  'color': ['#D75A5A', (t) => t.includes('#d75a5a') && t.includes('rgb(215, 90, 90)')],
+  'color': ['#E08D7B', (t) => t.includes('#e08d7b') && t.includes('rgb(224, 141, 123)')],
   'escape-html': ['<a href="x">&', (t) => t.includes('&lt;a')],
   'rot13': ['Hello', (t) => t === 'Uryyb'],
   'join-lines': ['one\ntwo\n\nthree', (t) => t.startsWith('one two')],

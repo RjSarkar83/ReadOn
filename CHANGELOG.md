@@ -1,4 +1,63 @@
-# Changelog — ReadOn · Compress
+# Changelog — ArtViSiON · Tools
+
+## 6.0.0 — ArtViSiON: soft pastel theme, the real mark, and a simpler UI
+
+Asked for: *"all simple and easy user friendly UI/UX design update and soft and pastel match colors
+update for ArtViSiON theme and unnecessary unused file remove"*.
+
+### 1 · The brand is ArtViSiON, and the mark is your artwork
+
+* Every surface is renamed: page title, header lock-up, hub heading, reader, 404 pages, PWA manifest,
+  operator strings inside the PDF/DOCX writers, the download names (`artvision-compressed.zip`) and the
+  watermark default. Nothing says the old name any more.
+* **The logo is `uploads/AV_Logo_001.png` — your file, byte for byte**, now at
+  `assets/artvision-logo.png`. It is drawn in the header (inlined once, 6.7 KB, no extra request) and
+  every icon — 192, 512, maskable, apple-touch, 32, 16, the favicon and the social card — is derived
+  from that one file by `python3 assets/make_icons.py`. **Nothing was redrawn or recoloured.**
+* The old vector mark (and its gradient symbol) is deleted from the page.
+
+### 2 · Soft pastel palette, three calm themes
+
+| token | before | after |
+|---|---|---|
+| accent | `#D75A5A` (hard red) | `#E08D7B` **soft coral** |
+| light theme page | `#EEF0F2` (cool grey) | `#F8F4EF` **warm cream** |
+| dark theme page | `#373A3E` (cold slate) | `#262220` **warm charcoal** |
+| borders | cool greys | warm sand (`#EADFD3` / `#453E39`) |
+| corners | 2 px | **12 px**, one consistent radius |
+| shadows | hard black | soft warm, low-spread |
+
+The full pastel family is now part of the theme (`--sage`, `--lilac`, `--sky`, `--butter`) for AI,
+status and category accents, so nothing is ever a saturated red block. Sliders, chips, selects and the
+drop-zone were re-drawn to match, and `color-scheme` is set per theme so native selects, scrollbars and
+date pickers follow instead of fighting it.
+
+### 3 · Simpler, friendlier UI/UX
+
+* **Light is the default** (it was dark), and the order is now Light → Dark → Warm. Dark stays one tap
+  away for anyone who prefers it — it is just no longer the first impression.
+* The hub heading says what to do: **"Pick a tool"** instead of repeating the brand, with the honest
+  one-liner *"108 tools · everything runs here · nothing is uploaded"*.
+* Bigger tap targets, one 12 px radius everywhere, softer focus ring, more breathing room between
+  cards, and the whole page keeps the pastel wash instead of a red glow.
+* The reader (`reader.html`) is repainted with the same tokens — and a real bug was fixed there: it had
+  **two** `[data-theme="light"]` blocks, so the light theme was silently the dark palette.
+
+### 4 · Unused files removed
+
+| removed | why |
+|---|---|
+| `pwa/` (9 files) | a shadow copy of the root icons/manifest/sw that nothing referenced; the root files are what the app and GitHub Pages actually serve |
+| `assets/readon-mark.svg`, `assets/readon-mark-original.png` | the previous brand mark, no longer drawn anywhere |
+| `assets/make_icons.js` | it rendered the old vector mark; replaced by `assets/make_icons.py`, which derives every icon from your artwork |
+| `uploads/` | the upload is now the shipped asset (`assets/artvision-logo.png`), not a duplicate |
+| studio screenshots & the leftover QA output dirs | already gone in 5.2.0 |
+
+The archive is now **103 members · 3.8 MB**, page bundle **722 KB**.
+
+Proof: the whole gate was re-run on this build — engine 29/29 · tools 121/121 · UI 8/8 · UX 21/21 ·
+devices 6/6 · PWA 10/10 · root layout 10/10 · image 24/24 · lossless 20/20 · validations 135/135 ·
+**ALL CHECKS PASSED**. Screenshots regenerated in the new palette.
 
 ## 5.2.0 — Design studio removed; the compressor carries the release
 

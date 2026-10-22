@@ -343,7 +343,7 @@ const ImageOps = (() => {
     const c = canvas(img.width, img.height);
     ctx2d(c).putImageData(img, 0, 0);
     const ctx = ctx2d(c);
-    const text = opts.text || 'ReadOn';
+    const text = opts.text || 'ArtViSiON';
     const size = Math.max(12, Math.round((opts.size || 0.06) * Math.max(img.width, img.height)));
     ctx.save();
     ctx.font = `600 ${size}px Montserrat, system-ui, sans-serif`;

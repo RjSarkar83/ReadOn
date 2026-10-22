@@ -157,7 +157,7 @@ const PDFEdit = (() => {
     for (const k of Object.keys(map)) {
       if (info[k] != null && info[k] !== '') dictSet(d, map[k], strv(info[k]));
     }
-    dictSet(d, 'Producer', strv(info.producer || 'ReadOn Compress'));
+    dictSet(d, 'Producer', strv(info.producer || 'ArtViSiON Tools'));
     return d;
   }
 
@@ -511,7 +511,7 @@ const PDFEdit = (() => {
     const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`;
     const core = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${esc(title || 'Converted document')}</dc:title><dc:creator>ReadOn Compress</dc:creator></cp:coreProperties>`;
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${esc(title || 'Converted document')}</dc:title><dc:creator>ArtViSiON Tools</dc:creator></cp:coreProperties>`;
     const enc = (t) => new TextEncoder().encode(t);
     const zip = await ZipCodec.write([
       { name: '[Content_Types].xml', data: enc(ct) },
@@ -708,7 +708,7 @@ const PDFEdit = (() => {
     const xref = out.length;
     out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
     for (const off of offsets) out += String(off).padStart(10, '0') + ' 00000 n \n';
-    out += `trailer\n<< /Size ${objs.length + 1} /Root ${catalogNum} 0 R /Producer (ReadOn Compress) >>\nstartxref\n${xref}\n%%EOF\n`;
+    out += `trailer\n<< /Size ${objs.length + 1} /Root ${catalogNum} 0 R /Producer (ArtViSiON Tools) >>\nstartxref\n${xref}\n%%EOF\n`;
     const bytes = Util.unlatin1(out);
     const check = await new Doc(bytes).scan();
     if (!check.rootNum || check.pages().length !== pages.length) throw new Error('layout failed verification');

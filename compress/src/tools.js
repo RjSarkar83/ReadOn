@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   tools.js — the ReadOn tool registry
+   tools.js — the ArtViSiON tool registry
 
    Every entry here is a real, working operation: no placeholders,
    no redirects, no "coming soon".  Each tool declares its inputs,
@@ -259,7 +259,7 @@ const Tools = (() => {
     title: 'Watermark image', blurb: 'Text stamp, single or tiled',
     accept: 'image/*', multiple: true, tags: 'watermark logo text copyright protect',
     options: [
-      { key: 'text', label: 'Text', type: 'text', def: 'ReadOn' },
+      { key: 'text', label: 'Text', type: 'text', def: 'ArtViSiON' },
       { key: 'opacity', label: 'Opacity', type: 'range', min: 5, max: 100, def: 35, suffix: '%' },
       { key: 'tile', label: 'Tile it', type: 'toggle', def: false },
       { key: 'format', label: 'Output', type: 'select', values: [['jpeg', 'JPEG'], ['png', 'PNG'], ['webp', 'WebP']], def: 'jpeg' }
@@ -878,7 +878,7 @@ const Tools = (() => {
     options: [{ key: 'v', label: 'Input', type: 'text', def: '' }],
     async run(s, o) { return { text: TextOps.timestamp((o.v || s || String(Date.now())).trim()) }; } });
   tx({ id: 'color', icon: 'i-drop', title: 'Colour converter', blurb: 'HEX ↔ RGB ↔ HSL + contrast', tags: 'color hex rgb hsl contrast',
-    options: [{ key: 'v', label: 'Colour', type: 'text', def: '#D75A5A' }],
+    options: [{ key: 'v', label: 'Colour', type: 'text', def: '#E08D7B' }],
     async run(s, o) { return { text: TextOps.colorConvert((o.v || s).trim()) }; } });
   tx({ id: 'escape-html', icon: 'i-code', title: 'Escape HTML', blurb: 'Entities in, entities out', tags: 'html escape entities encode',
     options: [{ key: 'dir', label: 'Direction', type: 'select', values: [['esc', 'escape'], ['unesc', 'unescape']], def: 'esc' }],

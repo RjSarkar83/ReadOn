@@ -11,7 +11,7 @@ import os
 import zipfile
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(ROOT, 'readon-compress-github.zip')
+OUT = os.path.join(ROOT, 'artvision-tools-github.zip')
 
 FILES = [
     'index.html',
@@ -40,9 +40,8 @@ FILES = [
     'favicon-32.png',
     'favicon-16.png',
     'apple-touch-icon.png',
-    'assets/readon-mark.svg',
-    'assets/readon-mark-original.png',
-    'assets/make_icons.js',
+    'assets/artvision-logo.png',
+    'assets/make_icons.py',
     'compress/build.js',
     'compress/manifest.webmanifest',
     'compress/icon-192.png',
@@ -57,15 +56,6 @@ FILES = [
     'vendor/mammoth.browser.min.js',
     'vendor/jszip.min.js',
     'vendor/jspdf.umd.min.js',
-    'pwa/sw.js',
-    'pwa/manifest.webmanifest',
-    'pwa/icon-192.png',
-    'pwa/icon-512.png',
-    'pwa/icon-512-maskable.png',
-    'pwa/favicon.svg',
-    'pwa/favicon-32.png',
-    'pwa/favicon-16.png',
-    'pwa/apple-touch-icon.png',
     'qa/run.sh',
     'qa/make_fixtures.py',
     'qa/pdf_engine_test.js',
