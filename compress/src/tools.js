@@ -105,14 +105,14 @@ const Tools = (() => {
   /* ── image tools ─────────────────────────────────────────────────── */
   add({
     id: 'compress', group: 'Popular', icon: 'i-down', kind: 'compress',
-    title: 'Compress', blurb: 'PDF, JPG, PNG, WebP, Office, text — 7 targets',
-    tags: 'shrink reduce smaller size pdf jpg png docx pptx xlsx epub zip'
+    title: 'Compress', blurb: 'Exact KB/MB target, all sizes in 1 upload & 7 presets',
+    tags: 'shrink reduce smaller size kb mb target all formats pdf jpg png webp docx pptx xlsx epub zip'
   });
 
   add({
     id: 'enhance', group: 'Image', icon: 'i-spark', kind: 'files',
     title: 'Enhance image', blurb: 'Denoise, auto white balance, levels, detail',
-    accept: 'image/*', multiple: false, tags: 'improve quality contrast sharpen bright photo clean noise',
+    accept: 'image/*', multiple: true, tags: 'improve quality contrast sharpen bright photo clean noise',
     options: [
       { key: 'level', label: 'Strength', type: 'select', values: [['light', 'Light'], ['medium', 'Medium'], ['strong', 'Strong']], def: 'medium' },
       { key: 'denoise', label: 'Remove noise', type: 'toggle', def: true },
@@ -121,33 +121,36 @@ const Tools = (() => {
       { key: 'format', label: 'Output', type: 'select', values: [['jpeg', 'JPEG'], ['png', 'PNG'], ['webp', 'WebP']], def: 'jpeg' }
     ],
     async run(files, o) {
-      const f = files[0];
       const strength = { light: 0.45, medium: 1, strong: 1.6 }[o.level] ?? 1;
-      let img = await toImageData(f);
-      const before = ImageOps.clipped(img);
-      await yieldNow();
-      if (o.denoise) { img = ImageOps.denoise(img, 0.35 * strength); await yieldNow(); }
-      if (o.wb) { img = ImageOps.autoWhiteBalance(img, 0.85); await yieldNow(); }
-      if (o.levels) img = ImageOps.autoLevels(img);
-      img = ImageOps.contrastSat(img, 1 + 0.06 * strength, 1 + 0.08 * strength);
-      await yieldNow();
-      img = ImageOps.detailBoost(img, 0.45 * strength);
-      await yieldNow();
-      const after = ImageOps.clipped(img);
-      const lost = Math.round(after.black * 1000) / 10 + Math.round(after.white * 1000) / 10;
-      const gain = Math.round((after.black + after.white - before.black - before.white) * 1000) / 10;
-      const enc = await encodeImage(img, o.format, 0.94);
-      const steps = [o.denoise ? 'denoise' : null, o.wb ? 'white balance' : null, o.levels ? 'auto levels' : null,
-        `detail +${Math.round(45 * strength)}%`].filter(Boolean).join(' · ');
-      return { files: [{ name: `${stem(f.name)}-enhanced.${enc.ext}`, bytes: enc.bytes,
-        note: `${img.width}×${img.height} · ${o.level} · ${steps}${gain > 1.5 ? ' · clipped ' + lost + '%' : ' · no clipping'}` }] };
+      const out = [];
+      for (const f of files) {
+        let img = await toImageData(f);
+        const before = ImageOps.clipped(img);
+        await yieldNow();
+        if (o.denoise) { img = ImageOps.denoise(img, 0.35 * strength); await yieldNow(); }
+        if (o.wb) { img = ImageOps.autoWhiteBalance(img, 0.85); await yieldNow(); }
+        if (o.levels) img = ImageOps.autoLevels(img);
+        img = ImageOps.contrastSat(img, 1 + 0.06 * strength, 1 + 0.08 * strength);
+        await yieldNow();
+        img = ImageOps.detailBoost(img, 0.45 * strength);
+        await yieldNow();
+        const after = ImageOps.clipped(img);
+        const lost = Math.round(after.black * 1000) / 10 + Math.round(after.white * 1000) / 10;
+        const gain = Math.round((after.black + after.white - before.black - before.white) * 1000) / 10;
+        const enc = await encodeImage(img, o.format, 0.94);
+        const steps = [o.denoise ? 'denoise' : null, o.wb ? 'white balance' : null, o.levels ? 'auto levels' : null,
+          `detail +${Math.round(45 * strength)}%`].filter(Boolean).join(' · ');
+        out.push({ name: `${stem(f.name)}-enhanced.${enc.ext}`, bytes: enc.bytes,
+          note: `${img.width}×${img.height} · ${o.level} · ${steps}${gain > 1.5 ? ' · clipped ' + lost + '%' : ' · no clipping'}` });
+      }
+      return { files: out };
     }
   });
 
   add({
     id: 'upscale', group: 'Image', icon: 'i-zoom', kind: 'files',
     title: 'Upscale image', blurb: '×2/×3/×4 progressive Lanczos + detail recovery',
-    accept: 'image/*', multiple: false, tags: 'bigger enlarge resize 2x 4x resolution hd upscale',
+    accept: 'image/*', multiple: true, tags: 'bigger enlarge resize 2x 4x resolution hd upscale',
     options: [
       { key: 'factor', label: 'Scale', type: 'select', values: [['2', '×2'], ['3', '×3'], ['4', '×4']], def: '2' },
       { key: 'cap', label: 'Max long edge', type: 'number', def: 4096, min: 512, max: 8192 },
@@ -155,45 +158,60 @@ const Tools = (() => {
       { key: 'format', label: 'Output', type: 'select', values: [['jpeg', 'JPEG (small)'], ['png', 'PNG (lossless)'], ['webp', 'WebP']], def: 'jpeg' }
     ],
     async run(files, o) {
-      const f = files[0];
-      const img = await toImageData(f);
       const factor = Math.max(1, Number(o.factor) || 2);
       const cap = Math.max(512, Number(o.cap) || 4096);
-      const long = Math.max(img.width, img.height) * factor;
-      const scale = Math.min(factor, cap / Math.max(img.width, img.height));
-      const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
-      const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-      /* at most 2× per pass: a single 4× Lanczos kernel rings badly on edges */
-      let big = ImageOps.resampleSteps(img, w, h, 2);
-      await yieldNow();
-      if (Number(o.detail) > 0) { big = ImageOps.detailBoost(big, Number(o.detail) / 100); await yieldNow(); }
-      const ms = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
-      const enc = await encodeImage(big, o.format, 0.95);
-      const passes = scale > 2 ? '2 progressive passes' : 'Lanczos-3';
-      return { files: [{ name: `${stem(f.name)}-${w}x${h}.${enc.ext}`, bytes: enc.bytes,
-        note: `${img.width}×${img.height} → ${w}×${h} (${passes}${Number(o.detail) ? ' · detail +' + o.detail + '%' : ''})${long > cap ? ' · capped at ' + cap + ' px' : ''}` }] };
+      const out = [];
+      for (const f of files) {
+        const img = await toImageData(f);
+        const long = Math.max(img.width, img.height) * factor;
+        const scale = Math.min(factor, cap / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+        let big = ImageOps.resampleSteps(img, w, h, 2);
+        await yieldNow();
+        if (Number(o.detail) > 0) { big = ImageOps.detailBoost(big, Number(o.detail) / 100); await yieldNow(); }
+        const enc = await encodeImage(big, o.format, 0.95);
+        const passes = scale > 2 ? '2 progressive passes' : 'Lanczos-3';
+        out.push({ name: `${stem(f.name)}-${w}x${h}.${enc.ext}`, bytes: enc.bytes,
+          note: `${img.width}×${img.height} → ${w}×${h} (${passes}${Number(o.detail) ? ' · detail +' + o.detail + '%' : ''})${long > cap ? ' · capped at ' + cap + ' px' : ''}` });
+      }
+      return { files: out };
     }
   });
 
   add({
     id: 'resize', group: 'Image', icon: 'i-resize', kind: 'files',
     title: 'Resize image', blurb: 'Exact pixels or percentage, high quality',
-    accept: 'image/*', multiple: false, tags: 'scale dimensions pixels percent smaller',
+    accept: 'image/*', multiple: true, tags: 'scale dimensions pixels percent smaller',
     options: [
       { key: 'mode', label: 'Mode', type: 'select', values: [['pct', 'percent'], ['px', 'pixels']], def: 'pct' },
-      { key: 'pct', label: 'Percent', type: 'range', min: 5, max: 100, def: 50, suffix: '%' },
+      { key: 'pct', label: 'Percent', type: 'range', min: 5, max: 200, def: 50, suffix: '%' },
       { key: 'w', label: 'Width (px)', type: 'number', def: 1200, min: 8, max: 10000 },
+      { key: 'h', label: 'Height (0=auto)', type: 'number', def: 0, min: 0, max: 10000 },
       { key: 'format', label: 'Output', type: 'select', values: [['keep', 'keep format'], ['jpeg', 'JPEG'], ['png', 'PNG'], ['webp', 'WebP']], def: 'keep' }
     ],
     async run(files, o) {
-      const f = files[0];
-      const img = await toImageData(f);
-      const scale = o.mode === 'pct' ? o.pct / 100 : Math.min(1, o.w / img.width);
-      const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
-      const out = scale >= 1 ? img : ImageOps.resampleLanczos(img, w, h);
-      const fmt = o.format === 'keep' ? (['png', 'jpeg', 'webp'].includes(extOf(f.name)) ? extOf(f.name) : 'jpeg') : o.format;
-      const enc = await encodeImage(out, fmt === 'jpg' ? 'jpeg' : fmt, 0.92);
-      return { files: [{ name: `${stem(f.name)}-${w}x${h}.${enc.ext}`, bytes: enc.bytes, note: `${img.width}×${img.height} → ${w}×${h}` }] };
+      const results = [];
+      for (const f of files) {
+        const img = await toImageData(f);
+        let w, h;
+        if (o.mode === 'pct') {
+          const scale = (Number(o.pct) || 50) / 100;
+          w = Math.max(1, Math.round(img.width * scale));
+          h = Math.max(1, Math.round(img.height * scale));
+        } else {
+          w = Math.max(1, Math.round(Number(o.w) || img.width));
+          const reqH = Math.round(Number(o.h) || 0);
+          h = reqH > 0 ? reqH : Math.max(1, Math.round(img.height * (w / img.width)));
+        }
+        const out = (w === img.width && h === img.height) ? img
+          : (w > img.width || h > img.height) ? ImageOps.resampleSteps(img, w, h, 2)
+          : ImageOps.resampleLanczos(img, w, h);
+        const origExt = extOf(f.name);
+        const fmt = o.format === 'keep' ? (['png', 'jpeg', 'jpg', 'webp'].includes(origExt) ? origExt : 'jpeg') : o.format;
+        const enc = await encodeImage(out, fmt === 'jpg' ? 'jpeg' : fmt, 0.92);
+        results.push({ name: `${stem(f.name)}-${w}x${h}.${enc.ext}`, bytes: enc.bytes, note: `${img.width}×${img.height} → ${w}×${h}` });
+      }
+      return { files: results };
     }
   });
 
@@ -325,8 +343,29 @@ const Tools = (() => {
     async run(files) {
       const out = [];
       for (const f of files) {
+        const e = extOf(f.name);
+        if ((e === 'jpg' || e === 'jpeg') && typeof JPEGCodec !== 'undefined') {
+          const clean = JPEGCodec.stripLossless(f.bytes);
+          if (clean && clean.bytes) {
+            const note = clean.dropped && clean.dropped.length
+              ? `bit-exact DCT kept · removed ${clean.dropped.join(', ')}`
+              : 'bit-exact DCT kept · clean of EXIF/GPS metadata';
+            out.push({ name: `${stem(f.name)}-clean.jpg`, bytes: clean.bytes, note });
+            continue;
+          }
+        }
+        if (e === 'png' && typeof PNGCodec !== 'undefined') {
+          const clean = await PNGCodec.optimize(f.bytes);
+          if (clean && clean.bytes) {
+            const note = clean.dropped && clean.dropped.length
+              ? `lossless PNG · removed ${clean.dropped.join(', ')}`
+              : 'lossless PNG · clean of metadata chunks';
+            out.push({ name: `${stem(f.name)}-clean.png`, bytes: clean.bytes, note });
+            continue;
+          }
+        }
         const img = await toImageData(f);
-        const fmt = ['png', 'jpeg', 'webp'].includes(extOf(f.name)) ? extOf(f.name) : 'jpeg';
+        const fmt = ['png', 'jpeg', 'jpg', 'webp'].includes(e) ? e : 'jpeg';
         const enc = await encodeImage(img, fmt === 'jpg' ? 'jpeg' : fmt, 0.95);
         out.push({ name: `${stem(f.name)}-clean.${enc.ext}`, bytes: enc.bytes, note: 're-encoded from pixels — every EXIF/GPS block is gone' });
       }
@@ -334,9 +373,45 @@ const Tools = (() => {
     }
   });
 
+  function jpegDirectInfo(bytes) {
+    if (!bytes || bytes.length < 4 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) return null;
+    let i = 2, sofW = 0, sofH = 0, comps = 3, rotated = false;
+    while (i + 4 < bytes.length) {
+      if (bytes[i] !== 0xFF) { i++; continue; }
+      const m = bytes[i + 1];
+      if (m === 0xFF) { i++; continue; }
+      if (m === 0xD9 || m === 0xDA) break;
+      const len = (bytes[i + 2] << 8) | bytes[i + 3];
+      if (len < 2 || i + 2 + len > bytes.length) break;
+      // Check EXIF orientation != 1 inside APP1
+      if (m === 0xE1 && len > 16 && bytes[i + 4] === 0x45 && bytes[i + 5] === 0x78 && bytes[i + 6] === 0x69 && bytes[i + 7] === 0x66) {
+        const tiff = i + 10;
+        const le = bytes[tiff] === 0x49 && bytes[tiff + 1] === 0x49;
+        const r16 = (o) => le ? (bytes[o] | (bytes[o + 1] << 8)) : ((bytes[o] << 8) | bytes[o + 1]);
+        const r32 = (o) => (le ? (bytes[o] | (bytes[o + 1] << 8) | (bytes[o + 2] << 16) | (bytes[o + 3] << 24)) : ((bytes[o] << 24) | (bytes[o + 1] << 16) | (bytes[o + 2] << 8) | bytes[o + 3])) >>> 0;
+        const ifd0 = tiff + r32(tiff + 4);
+        if (ifd0 + 2 <= i + 2 + len) {
+          const cnt = r16(ifd0);
+          for (let e = 0; e < cnt; e++) {
+            const eo = ifd0 + 2 + e * 12;
+            if (eo + 12 > i + 2 + len) break;
+            if (r16(eo) === 0x0112 && r16(eo + 8) > 1) rotated = true;
+          }
+        }
+      }
+      if ((m >= 0xC0 && m <= 0xC3) || (m >= 0xC5 && m <= 0xC7) || (m >= 0xC9 && m <= 0xCB)) {
+        sofH = (bytes[i + 5] << 8) | bytes[i + 6];
+        sofW = (bytes[i + 7] << 8) | bytes[i + 8];
+        comps = bytes[i + 9] || 3;
+      }
+      i += 2 + len;
+    }
+    return sofW && sofH ? { width: sofW, height: sofH, comps, rotated } : null;
+  }
+
   add({
     id: 'img2pdf', group: 'Image', icon: 'i-pdf', kind: 'files',
-    title: 'Image → PDF', blurb: 'One page per image, A4/Letter/fit, JPEG kept as-is',
+    title: 'Image → PDF', blurb: 'One page per image, A4/Letter/fit, upright EXIF',
     accept: 'image/*', multiple: true, tags: 'jpg to pdf png to pdf photo document scan',
     options: [
       { key: 'pageSize', label: 'Page', type: 'select', values: [['a4', 'A4'], ['letter', 'Letter'], ['image', 'fit image']], def: 'a4' },
@@ -346,10 +421,16 @@ const Tools = (() => {
       const items = [];
       for (const f of files) {
         const img = await toImageData(f);
-        const enc = extOf(f.name) === 'jpeg' || extOf(f.name) === 'jpg'
-          ? { bytes: f.bytes, type: 'image/jpeg' }
-          : { bytes: await ImageOps.encode(img, 'image/jpeg', 0.92) };
-        items.push({ bytes: enc.bytes, width: img.width, height: img.height });
+        const info = (extOf(f.name) === 'jpeg' || extOf(f.name) === 'jpg') ? jpegDirectInfo(f.bytes) : null;
+        const canDirect = info && !info.rotated && info.comps !== 4 && info.width === img.width && info.height === img.height;
+        let jpgBytes;
+        if (canDirect) {
+          const stripped = (typeof JPEGCodec !== 'undefined' && JPEGCodec.stripLossless) ? JPEGCodec.stripLossless(f.bytes) : null;
+          jpgBytes = (stripped && stripped.bytes) ? stripped.bytes : f.bytes;
+        } else {
+          jpgBytes = await ImageOps.encode(img, 'image/jpeg', 0.93);
+        }
+        items.push({ bytes: jpgBytes, width: img.width, height: img.height });
       }
       const r = await PDFEdit.imagesToPdf(items, { pageSize: o.pageSize, margin: o.margin });
       return { files: [{ name: 'images.pdf', bytes: r.bytes, note: `${r.pages} page${r.pages > 1 ? 's' : ''} · ${o.pageSize.toUpperCase()} · ${o.margin} pt margin` }] };
@@ -362,14 +443,37 @@ const Tools = (() => {
     accept: '.svg,image/svg+xml', multiple: true, tags: 'svg png raster convert logo',
     options: [{ key: 'size', label: 'Width (px)', type: 'number', def: 1024, min: 16, max: 4096 }],
     async run(files, o) {
+      if (typeof Image === 'undefined' || typeof document === 'undefined') {
+        const err = new Error('NO_CANVAS');
+        err.code = 'NO_CANVAS';
+        throw err;
+      }
       const out = [];
       for (const f of files) {
-        const blob = new Blob([f.bytes], { type: 'image/svg+xml' });
+        let svgText = new TextDecoder().decode(f.bytes).replace(/^\uFEFF/, '').trim();
+        if (!/<svg[\s>]/i.test(svgText)) throw new Error(`${f.name} is not a valid SVG document`);
+        // Parse intrinsic aspect ratio from width/height or viewBox so viewBox-only icon SVGs scale accurately
+        const tagMatch = svgText.match(/<svg\b([^>]*)>/i);
+        const tagAttrs = tagMatch ? tagMatch[1] : '';
+        let vbRatio = 0;
+        const vb = tagAttrs.match(/\bviewBox\s*=\s*["']\s*([+-]?\d*\.?\d+)[\s,]+([+-]?\d*\.?\d+)[\s,]+([+-]?\d*\.?\d+)[\s,]+([+-]?\d*\.?\d+)/i);
+        if (vb && +vb[3] > 0 && +vb[4] > 0) vbRatio = (+vb[4]) / (+vb[3]);
+        const attrW = parseFloat((tagAttrs.match(/\bwidth\s*=\s*["']\s*([0-9.]+)(?:px)?\s*["']/i) || [])[1] || '0');
+        const attrH = parseFloat((tagAttrs.match(/\bheight\s*=\s*["']\s*([0-9.]+)(?:px)?\s*["']/i) || [])[1] || '0');
+        const ratio = (attrW > 0 && attrH > 0) ? (attrH / attrW) : (vbRatio || 1);
+        const w = Math.max(16, Math.min(8192, Number(o.size) || 1024));
+        const h = Math.max(1, Math.round(w * ratio));
+        // Ensure xmlns and explicit pixel dimensions exist on root <svg> so browsers rasterise crisply at target resolution
+        svgText = svgText.replace(/<svg\b([^>]*)>/i, (full, attrs) => {
+          let a = attrs;
+          if (!/\bxmlns\s*=/i.test(a)) a += ' xmlns="http://www.w3.org/2000/svg"';
+          a = a.replace(/\s+\b(?:width|height)\s*=\s*["'][^"']*["']/gi, '');
+          return `<svg${a} width="${w}" height="${h}">`;
+        });
+        const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         try {
-          const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-          const ratio = im.naturalHeight / im.naturalWidth || 1;
-          const w = o.size, h = Math.max(1, Math.round(w * ratio));
+          const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('SVG could not be rendered by browser')); i.src = url; });
           const c = ImageOps.canvas(w, h);
           const ctx = ImageOps.ctx2d(c);
           ctx.drawImage(im, 0, 0, w, h);
@@ -382,12 +486,27 @@ const Tools = (() => {
   });
 
 
+  function autoTrimBounds(img, tol = 14) {
+    const { width: w, height: h, data: d } = img;
+    const ref = [d[0], d[1], d[2], d[3]];
+    const diff = (idx) => {
+      if (ref[3] < 16 && d[idx + 3] < 16) return 0;
+      return Math.max(Math.abs(d[idx] - ref[0]), Math.abs(d[idx + 1] - ref[1]), Math.abs(d[idx + 2] - ref[2]), Math.abs(d[idx + 3] - ref[3]));
+    };
+    let top = 0, bottom = h - 1, left = 0, right = w - 1;
+    outerT: for (; top < bottom; top++) { for (let x = 0; x < w; x++) if (diff((top * w + x) * 4) > tol) break outerT; }
+    outerB: for (; bottom > top; bottom--) { for (let x = 0; x < w; x++) if (diff((bottom * w + x) * 4) > tol) break outerB; }
+    outerL: for (; left < right; left++) { for (let y = top; y <= bottom; y++) if (diff((y * w + left) * 4) > tol) break outerL; }
+    outerR: for (; right > left; right--) { for (let y = top; y <= bottom; y++) if (diff((y * w + right) * 4) > tol) break outerR; }
+    return { x: left, y: top, w: Math.max(1, right - left + 1), h: Math.max(1, bottom - top + 1) };
+  }
+
   add({
     id: 'crop', group: 'Image', icon: 'i-cut', kind: 'files',
     title: 'Crop image', blurb: 'Centre crop to a ratio, or trim margins',
-    accept: 'image/*', multiple: true, tags: 'crop trim cut frame ratio square',
+    accept: 'image/*', multiple: true, tags: 'crop trim cut frame ratio square whitespace auto',
     options: [
-      { key: 'mode', label: 'Crop to', type: 'select', values: [['1:1', 'square 1:1'], ['4:5', 'portrait 4:5'], ['16:9', 'wide 16:9'], ['3:2', 'photo 3:2'], ['pct', 'percent'], ['trim', 'trim margin']], def: '1:1' },
+      { key: 'mode', label: 'Crop to', type: 'select', values: [['1:1', 'square 1:1'], ['4:5', 'portrait 4:5'], ['16:9', 'wide 16:9'], ['3:2', 'photo 3:2'], ['auto', 'auto-trim borders'], ['pct', 'percent'], ['trim', 'trim margin']], def: '1:1' },
       { key: 'pct', label: 'Percent kept', type: 'range', min: 10, max: 100, def: 70, suffix: '%' },
       { key: 'margin', label: 'Margin', type: 'range', min: 0, max: 40, def: 6, suffix: '%' },
       { key: 'format', label: 'Output', type: 'select', values: [['jpeg', 'JPEG'], ['png', 'PNG'], ['webp', 'WebP']], def: 'jpeg' }
@@ -397,7 +516,8 @@ const Tools = (() => {
       for (const f of files) {
         const img = await toImageData(f);
         let w = img.width, h = img.height, x = 0, y = 0;
-        if (o.mode === 'pct') { w = Math.round(img.width * o.pct / 100); h = Math.round(img.height * o.pct / 100); x = (img.width - w) >> 1; y = (img.height - h) >> 1; }
+        if (o.mode === 'auto') { const b = autoTrimBounds(img); x = b.x; y = b.y; w = b.w; h = b.h; }
+        else if (o.mode === 'pct') { w = Math.round(img.width * o.pct / 100); h = Math.round(img.height * o.pct / 100); x = (img.width - w) >> 1; y = (img.height - h) >> 1; }
         else if (o.mode === 'trim') { x = Math.round(img.width * o.margin / 100); y = Math.round(img.height * o.margin / 100); w = img.width - x * 2; h = img.height - y * 2; }
         else {
           const [rw, rh] = o.mode.split(':').map(Number);
@@ -407,7 +527,7 @@ const Tools = (() => {
           x = (img.width - w) >> 1; y = (img.height - h) >> 1;
         }
         const enc = await encodeImage(cropData(img, x, y, Math.max(1, w), Math.max(1, h)), o.format, 0.93);
-        out.push({ name: `${stem(f.name)}-crop.${enc.ext}`, bytes: enc.bytes, note: `${img.width}×${img.height} → ${w}×${h} (${o.mode === 'pct' || o.mode === 'trim' ? o.mode : o.mode + ' ratio'})` });
+        out.push({ name: `${stem(f.name)}-crop.${enc.ext}`, bytes: enc.bytes, note: `${img.width}×${img.height} → ${w}×${h} (${o.mode === 'pct' || o.mode === 'trim' || o.mode === 'auto' ? o.mode : o.mode + ' ratio'})` });
       }
       return { files: out };
     }
@@ -601,13 +721,13 @@ const Tools = (() => {
 
   add({
     id: 'pdf-images', group: 'PDF', icon: 'i-image', kind: 'files',
-    title: 'Extract PDF images', blurb: 'Every embedded JPEG, at original quality',
-    accept: 'application/pdf,.pdf', multiple: false, tags: 'extract images photos jpeg pdf',
+    title: 'Extract PDF images', blurb: 'Every embedded JPEG & PNG at original quality',
+    accept: 'application/pdf,.pdf', multiple: false, tags: 'extract images photos jpeg png pdf',
     async run(files) {
-      const imgs = await PDFEdit.extractJpegs(files[0].bytes);
-      if (!imgs.length) throw new Error('no embedded JPEG images in this PDF (vector pages have nothing to extract)');
+      const imgs = PDFEdit.extractImages ? await PDFEdit.extractImages(files[0].bytes) : await PDFEdit.extractJpegs(files[0].bytes);
+      if (!imgs.length) throw new Error('no embedded raster images found in this PDF (vector pages have nothing to extract)');
       const zip = await ZipCodec.write(imgs.map((i) => ({ name: i.name, data: i.bytes })));
-      return { files: [{ name: 'pdf-images.zip', bytes: zip, note: `${imgs.length} JPEG${imgs.length > 1 ? 's' : ''}, untouched quality` }] };
+      return { files: [{ name: 'pdf-images.zip', bytes: zip, note: `${imgs.length} image${imgs.length > 1 ? 's' : ''} extracted at untouched quality` }] };
     }
   });
 
@@ -740,13 +860,23 @@ const Tools = (() => {
     accept: '.zip,.docx,.pptx,.xlsx,.epub,.odt,application/zip', multiple: false, tags: 'unzip extract archive zip files',
     async run(files) {
       const entries = await ZipCodec.list(files[0].bytes);
-      if (!entries) throw new Error('not a ZIP archive');
+      if (!entries) throw new Error('not a ZIP archive (or uses unsupported ZIP64)');
+      if (entries.some((e) => (e.flags & 1) !== 0)) throw new Error('password-protected ZIP archive — decrypt it first');
       const out = [];
+      const seenNames = new Map();
       for (const e of entries) {
         if (e.name.endsWith('/')) continue;
         const data = await ZipCodec.readEntry(e);
-        if (data) out.push({ name: e.name.split('/').pop(), bytes: data, note: `${(data.length / 1024).toFixed(1)} KB` });
+        if (!data) continue;
+        let base = e.name.split('/').pop() || 'file';
+        if (seenNames.has(base)) {
+          // Disambiguate colliding basenames across folders (e.g. _rels/.rels vs word/_rels/document.xml.rels)
+          base = e.name.replace(/[\\/]+/g, '__');
+        }
+        seenNames.set(base, 1);
+        out.push({ name: base, bytes: data.slice(), note: `${e.name} · ${(data.length / 1024).toFixed(1)} KB` });
       }
+      if (!out.length) throw new Error('archive contains no readable files');
       return { files: out, note: `${out.length} files unpacked` };
     }
   });
@@ -764,7 +894,7 @@ const Tools = (() => {
 
   add({
     id: 'pptx-text', group: 'Documents', icon: 'i-doc', kind: 'files',
-    title: 'PPTX → text', blurb: 'Every slide, every text box',
+    title: 'PPTX → text', blurb: 'Every slide, every text box & speaker notes',
     accept: '.pptx', multiple: false, tags: 'powerpoint pptx slides text extract convert',
     async run(files) {
       const entries = await ZipCodec.list(files[0].bytes);
@@ -772,12 +902,27 @@ const Tools = (() => {
       const slides = entries.filter((e) => /^ppt\/slides\/slide\d+\.xml$/.test(e.name))
         .sort((a, b) => (+a.name.match(/(\d+)/)[1]) - (+b.name.match(/(\d+)/)[1]));
       if (!slides.length) throw new Error('no slides inside');
+      const unesc = (t) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+      const extractParas = (xml) => [...xml.matchAll(/<a:p\b[\s\S]*?<\/a:p>/g)]
+        .map((pm) => {
+          const pXml = pm[0].replace(/<a:br\b[^>]*\/?>/g, '\n');
+          return [...pXml.matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((m) => unesc(m[1])).join('');
+        })
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join('\n');
       const out = [];
       for (const s of slides) {
+        const num = s.name.match(/(\d+)/)[1];
         const xml = new TextDecoder().decode(await ZipCodec.readEntry(s));
-        const text = [...xml.matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((m) => m[1])
-          .join('\n').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-        out.push(`──────── slide ${s.name.match(/(\d+)/)[1]} ────────\n${text}`);
+        let text = extractParas(xml);
+        const noteEntry = entries.find((e) => e.name === `ppt/notesSlides/notesSlide${num}.xml`);
+        if (noteEntry) {
+          const nxml = new TextDecoder().decode(await ZipCodec.readEntry(noteEntry));
+          const ntext = extractParas(nxml);
+          if (ntext && ntext !== num) text += (text ? '\n\n[Notes]\n' : '[Notes]\n') + ntext;
+        }
+        out.push(`──────── slide ${num} ────────\n${text}`);
       }
       const body = out.join('\n\n');
       return { files: [{ name: `${stem(files[0].name)}.txt`, bytes: Util.utf8(body + '\n'), note: `${slides.length} slides` }], preview: body.slice(0, 4000) };
@@ -795,8 +940,11 @@ const Tools = (() => {
       const cell = (v, ref) => {
         const t = v == null ? '' : String(v);
         if (t === '') return '';
-        if (/^-?\d+(\.\d+)?$/.test(t)) return `<c r="${ref}"><v>${t}</v></c>`;
-        return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</t></is></c>`;
+        // Preserve leading-zero codes (007, 011001) and >15-digit IDs as text so Excel never corrupts them
+        const isSafeNum = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(t) && t.replace(/[-.]/g, '').length <= 15;
+        if (isSafeNum) return `<c r="${ref}"><v>${t}</v></c>`;
+        const safeXml = t.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${safeXml}</t></is></c>`;
       };
       const colName = (i) => { let s = '', n = i + 1; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
       const sheetRows = rows.map((r, ri) => `<row r="${ri + 1}">${r.map((c, ci) => cell(c, colName(ci) + (ri + 1))).join('')}</row>`).join('');
@@ -859,8 +1007,8 @@ const Tools = (() => {
     async run() { return { text: Array.from({ length: 5 }, () => TextOps.uuid()).join('\n') }; } });
   tx({ id: 'count', icon: 'i-doc', title: 'Word counter', blurb: 'Words, lines, sentences, reading time', tags: 'count words characters lines',
     async run(s) { return { text: TextOps.stats(s).map(([k, v]) => String(k).padEnd(26) + v).join('\n') }; } });
-  tx({ id: 'case', icon: 'i-case', title: 'Change case', blurb: 'UPPER, lower, Title, camel, snake, kebab', tags: 'case upper lower title camel snake',
-    options: [{ key: 'mode', label: 'Case', type: 'select', values: [['upper', 'UPPER'], ['lower', 'lower'], ['title', 'Title Case'], ['sentence', 'Sentence case'], ['camel', 'camelCase'], ['snake', 'snake_case'], ['kebab', 'kebab-case'], ['constant', 'CONSTANT_CASE']], def: 'title' }],
+  tx({ id: 'case', icon: 'i-case', title: 'Change case', blurb: 'UPPER, lower, Title, camel, Pascal, snake, kebab', tags: 'case upper lower title camel pascal snake',
+    options: [{ key: 'mode', label: 'Case', type: 'select', values: [['upper', 'UPPER'], ['lower', 'lower'], ['title', 'Title Case'], ['sentence', 'Sentence case'], ['camel', 'camelCase'], ['pascal', 'PascalCase'], ['snake', 'snake_case'], ['kebab', 'kebab-case'], ['constant', 'CONSTANT_CASE']], def: 'title' }],
     async run(s, o) { return { text: TextOps.caseConvert(s, o.mode) }; } });
   tx({ id: 'sort', icon: 'i-sort', title: 'Sort lines', blurb: 'Natural order, numbers aware', tags: 'sort lines order alphabetical',
     options: [{ key: 'dir', label: 'Order', type: 'select', values: [['asc', 'A → Z'], ['desc', 'Z → A']], def: 'asc' }],
@@ -879,7 +1027,10 @@ const Tools = (() => {
     async run(s, o) { return { text: TextOps.timestamp((o.v || s || String(Date.now())).trim()) }; } });
   tx({ id: 'color', icon: 'i-drop', title: 'Colour converter', blurb: 'HEX ↔ RGB ↔ HSL + contrast', tags: 'color hex rgb hsl contrast',
     options: [{ key: 'v', label: 'Colour', type: 'text', def: '#E08D7B' }],
-    async run(s, o) { return { text: TextOps.colorConvert((o.v || s).trim()) }; } });
+    async run(s, o) {
+      const target = (s && s.trim() && o.v === '#E08D7B') ? s.trim() : (o.v || s || '').trim();
+      return { text: TextOps.colorConvert(target) };
+    } });
   tx({ id: 'escape-html', icon: 'i-code', title: 'Escape HTML', blurb: 'Entities in, entities out', tags: 'html escape entities encode',
     options: [{ key: 'dir', label: 'Direction', type: 'select', values: [['esc', 'escape'], ['unesc', 'unescape']], def: 'esc' }],
     async run(s, o) { return { text: o.dir === 'esc' ? TextOps.escapeHtml(s) : TextOps.unescapeHtml(s) }; } });
@@ -928,12 +1079,18 @@ const Tools = (() => {
       symbol: '!@#$%^&*-_=+?'
     };
     const pool = sets === 'simple' ? A.lower + A.digit : A.lower + A.upper + A.digit + A.symbol;
+    const rng = (b) => (self.crypto && self.crypto.getRandomValues ? self.crypto.getRandomValues(b) : b.forEach((_, i) => (b[i] = (Math.random() * 256) | 0)));
+    const maxUnbiased = Math.floor(256 / pool.length) * pool.length;
     const out = [];
     for (let k = 0; k < 5; k++) {
-      const bytes = new Uint8Array(len);
-      (self.crypto || { getRandomValues: (b) => b.forEach((_, i) => (b[i] = (Math.random() * 256) | 0)) }).getRandomValues(bytes);
       let pw = '';
-      for (let i = 0; i < len; i++) pw += pool[bytes[i] % pool.length];
+      const buf = new Uint8Array(len * 2);
+      while (pw.length < len) {
+        rng(buf);
+        for (let i = 0; i < buf.length && pw.length < len; i++) {
+          if (buf[i] < maxUnbiased) pw += pool[buf[i] % pool.length];
+        }
+      }
       out.push(pw);
     }
     const bits = Math.round(len * Math.log2(pool.length));
@@ -1194,55 +1351,116 @@ const Tools = (() => {
       } catch (e) { /* claims are not JSON */ }
       return { text: `header\n${head}\n\nclaims\n${body}${when ? '\n\n' + when : ''}\nsignature verified: no — this tool only decodes` };
     } });
+  /* pure-JS SHA-1 + HMAC-SHA1 fallback so TOTP works even on non-HTTPS LAN / file:// */
+  function sha1Js(bytes) {
+    const rol = (n, c) => (n << c) | (n >>> (32 - c));
+    const len = bytes.length;
+    const padLen = (56 - ((len + 1) % 64) + 64) % 64;
+    const msg = new Uint8Array(len + 1 + padLen + 8);
+    msg.set(bytes, 0); msg[len] = 0x80;
+    const dv = new DataView(msg.buffer);
+    dv.setUint32(msg.length - 8, Math.floor((len * 8) / 4294967296), false);
+    dv.setUint32(msg.length - 4, (len * 8) >>> 0, false);
+    let h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476, h4 = 0xc3d2e1f0;
+    const W = new Uint32Array(80);
+    for (let off = 0; off < msg.length; off += 64) {
+      for (let i = 0; i < 16; i++) W[i] = dv.getUint32(off + i * 4, false);
+      for (let i = 16; i < 80; i++) W[i] = rol(W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16], 1) >>> 0;
+      let a = h0, b = h1, c = h2, d = h3, e = h4;
+      for (let i = 0; i < 80; i++) {
+        const f = i < 20 ? ((b & c) | (~b & d)) : i < 40 ? (b ^ c ^ d) : i < 60 ? ((b & c) | (b & d) | (c & d)) : (b ^ c ^ d);
+        const k = i < 20 ? 0x5a827999 : i < 40 ? 0x6ed9eba1 : i < 60 ? 0x8f1bbcdc : 0xca62c1d6;
+        const temp = (rol(a, 5) + f + e + k + W[i]) >>> 0;
+        e = d; d = c; c = rol(b, 30) >>> 0; b = a; a = temp;
+      }
+      h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0; h4 = (h4 + e) >>> 0;
+    }
+    const out = new Uint8Array(20);
+    const odv = new DataView(out.buffer);
+    [h0, h1, h2, h3, h4].forEach((v, i) => odv.setUint32(i * 4, v, false));
+    return out;
+  }
+  function hmacSha1Js(keyBytes, msgBytes) {
+    const k = keyBytes.length > 64 ? sha1Js(keyBytes) : keyBytes;
+    const ipad = new Uint8Array(64), opad = new Uint8Array(64);
+    for (let i = 0; i < 64; i++) { const b = k[i] || 0; ipad[i] = b ^ 0x36; opad[i] = b ^ 0x5c; }
+    const inner = new Uint8Array(64 + msgBytes.length);
+    inner.set(ipad, 0); inner.set(msgBytes, 64);
+    const ih = sha1Js(inner);
+    const outer = new Uint8Array(64 + 20);
+    outer.set(opad, 0); outer.set(ih, 64);
+    return sha1Js(outer);
+  }
+
+  const TOTP_DEF = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
   tx({ id: 'totp', icon: 'i-clock', title: 'TOTP codes', blurb: 'RFC 6238 from a base32 secret', tags: 'totp otp 2fa authenticator code',
     options: [
-      { key: 'secret', label: 'Base32 secret', type: 'text', def: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' },
+      { key: 'secret', label: 'Base32 secret', type: 'text', def: TOTP_DEF },
       { key: 't', label: 'Unix time (0 = now)', type: 'number', def: 0, min: 0, max: 9999999999 },
       { key: 'digits', label: 'Digits', type: 'select', values: [['6', '6'], ['8', '8']], def: '6' }
     ],
     async run(s, o) {
-      const secret = new Uint8Array(base32decode(o.secret || s));
-      const key = await self.crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
-      const base = o.t && +o.t > 0 ? +o.t : Math.floor(Date.now() / 1000);
-      const out = [];
-      for (let step = -1; step <= 2; step++) {
-        const t = Math.floor(base / 30) + step;
-        const buf = new ArrayBuffer(8);
-        new DataView(buf).setUint32(4, t);
-        const mac = new Uint8Array(await self.crypto.subtle.sign('HMAC', key, buf));
-        const off = mac[19] & 15;
-        const bin = ((mac[off] & 127) << 24) | (mac[off + 1] << 16) | (mac[off + 2] << 8) | mac[off + 3];
-        const code = String(bin % Math.pow(10, +o.digits || 6)).padStart(+o.digits || 6, '0');
-        out.push(`${code}   ${step === 0 ? 'now' : step < 0 ? 'previous window' : '+' + step + ' window'} (step ${t})`);
-      }
-      return { text: out.join('\n') };
+      try {
+        const rawSec = (s && s.trim() && o.secret === TOTP_DEF ? s : (o.secret || s || TOTP_DEF)).replace(/[\s\-]+/g, '');
+        const secret = new Uint8Array(base32decode(rawSec));
+        if (!secret.length) return { text: 'enter a valid Base32 secret first' };
+        const useSubtle = !!(self.crypto && self.crypto.subtle);
+        const key = useSubtle ? await self.crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']) : null;
+        const base = o.t && +o.t > 0 ? +o.t : Math.floor(Date.now() / 1000);
+        const out = [];
+        for (let step = -1; step <= 2; step++) {
+          const t = Math.floor(base / 30) + step;
+          const buf = new ArrayBuffer(8);
+          const dv = new DataView(buf);
+          dv.setUint32(0, Math.floor(t / 4294967296), false);
+          dv.setUint32(4, t >>> 0, false);
+          const mac = useSubtle ? new Uint8Array(await self.crypto.subtle.sign('HMAC', key, buf)) : hmacSha1Js(secret, new Uint8Array(buf));
+          const off = mac[19] & 15;
+          const bin = ((mac[off] & 127) << 24) | (mac[off + 1] << 16) | (mac[off + 2] << 8) | mac[off + 3];
+          const code = String(bin % Math.pow(10, +o.digits || 6)).padStart(+o.digits || 6, '0');
+          out.push(`${code}   ${step === 0 ? 'now' : step < 0 ? 'previous window' : '+' + step + ' window'} (step ${t})`);
+        }
+        return { text: out.join('\n') };
+      } catch (e) { return { text: e.message }; }
     } });
   tx({ id: 'bases', icon: 'i-hash', title: 'Number bases', blurb: 'bin / oct / dec / hex, any direction', tags: 'binary octal decimal hex convert number base',
     options: [
       { key: 'from', label: 'From base', type: 'select', values: [['auto', 'detect'], ['2', '2'], ['8', '8'], ['10', '10'], ['16', '16']], def: 'auto' }
     ],
     async run(s, o) {
-      let t = s.trim().replace(/[\s_]/g, '');
+      let t = String(s || '').trim().replace(/[\s_]/g, '');
+      if (!t) return { text: 'enter a number (e.g. 255, 0xFF, 0b1010)' };
+      const neg = t.startsWith('-');
+      if (neg) t = t.slice(1);
       let base = +o.from || 0;
       if (!base || o.from === 'auto') {
         if (/^0x/i.test(t)) { base = 16; t = t.slice(2); }
         else if (/^0b/i.test(t)) { base = 2; t = t.slice(2); }
         else if (/^0o/i.test(t)) { base = 8; t = t.slice(2); }
-        else if (/^[01]+$/.test(t)) base = 2;
+        else if (/^[01]{4,}$/.test(t)) base = 2;
         else if (/^[0-9]+$/.test(t)) base = 10;
         else if (/^[0-9a-f]+$/i.test(t)) base = 16;
         else return { text: 'cannot detect the base — type 0x…, 0b…, or choose one' };
+      } else {
+        if (base === 16 && /^0x/i.test(t)) t = t.slice(2);
+        if (base === 2 && /^0b/i.test(t)) t = t.slice(2);
+        if (base === 8 && /^0o/i.test(t)) t = t.slice(2);
       }
-      const n = parseInt(t, base);
-      if (!Number.isFinite(n)) return { text: 'not a valid number in base ' + base };
+      const validRe = base === 2 ? /^[01]+$/ : base === 8 ? /^[0-7]+$/ : base === 10 ? /^[0-9]+$/ : /^[0-9a-f]+$/i;
+      if (!validRe.test(t)) return { text: 'not a valid number in base ' + base };
+      const pref = base === 16 ? '0x' : base === 2 ? '0b' : base === 8 ? '0o' : '';
+      const bi = (neg ? -1n : 1n) * BigInt(pref + t);
+      const sign = bi < 0n ? '-' : '';
+      const abs = bi < 0n ? -bi : bi;
+      const numVal = Number(bi);
       return { text: [
-        ['input', `${t} (base ${base})`],
-        ['binary', n.toString(2)],
-        ['octal', n.toString(8)],
-        ['decimal', String(n)],
-        ['hex', n.toString(16).toUpperCase()],
-        ['bytes (BE)', Buffer32(n)],
-        ['unicode', n >= 32 && n <= 0x10FFFF ? String.fromCodePoint(n) : '—']
+        ['input', `${sign}${t} (base ${base})`],
+        ['binary', sign + abs.toString(2)],
+        ['octal', sign + abs.toString(8)],
+        ['decimal', bi.toString(10)],
+        ['hex', sign + abs.toString(16).toUpperCase()],
+        ['bytes (BE)', Number.isSafeInteger(numVal) ? Buffer32(numVal) : '64-bit+ integer'],
+        ['unicode', bi >= 32n && bi <= 0x10FFFFn ? String.fromCodePoint(Number(bi)) : '—']
       ].map(([k, v]) => String(k).padEnd(12) + v).join('\n') };
     } });
   function Buffer32(n) {
@@ -1264,7 +1482,8 @@ const Tools = (() => {
   tx({ id: 'subnet', icon: 'i-link', title: 'IPv4 subnet', blurb: 'Mask, network, broadcast, host range', tags: 'subnet cidr ip network mask calculator',
     options: [{ key: 'cidr', label: 'CIDR', type: 'text', def: '192.168.1.10/24' }],
     async run(s, o) {
-      try { return { text: subnet((o.cidr || s).trim()) }; } catch (e) { return { text: e.message }; }
+      const target = (s && s.trim() && o.cidr === '192.168.1.10/24') ? s.trim() : (o.cidr || s || '').trim();
+      try { return { text: subnet(target) }; } catch (e) { return { text: e.message }; }
     } });
   tx({ id: 'diff-text', icon: 'i-sort', title: 'Diff two texts', blurb: 'Line diff — left is “a”, right is “b”', tags: 'diff compare text changes',
     options: [{ key: 'b', label: 'Compare with', type: 'text', def: '' }],
@@ -1322,7 +1541,8 @@ const Tools = (() => {
   tx({ id: 'age', icon: 'i-clock', title: 'Age calculator', blurb: 'Years, months, days, next birthday', tags: 'age birthday calculate date',
     options: [{ key: 'birth', label: 'Birth date', type: 'text', def: '2000-01-01' }],
     async run(s, o) {
-      const b = new Date((o.birth || s).trim() + 'T00:00:00Z');
+      const raw = (s && s.trim() && o.birth === '2000-01-01') ? s.trim() : (o.birth || s || '').trim();
+      const b = new Date(raw + 'T00:00:00Z');
       if (isNaN(b)) return { text: 'use YYYY-MM-DD' };
       const now = new Date();
       let y = now.getUTCFullYear() - b.getUTCFullYear();
@@ -1348,11 +1568,20 @@ const Tools = (() => {
       { key: 'to', label: 'To', type: 'text', def: 'mi' }
     ],
     async run(s, o) {
-      const v = Number((o.value || s).toString().trim());
-      const from = String(o.from || '').trim().toLowerCase();
-      const to = String(o.to || '').trim().toLowerCase();
+      let valStr = String(o.value || '').trim();
+      let from = String(o.from || '').trim().toLowerCase();
+      let to = String(o.to || '').trim().toLowerCase();
+      if (s && s.trim() && valStr === '1') {
+        const expr = s.trim().match(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)?(?:\s+(?:to|in)\s+([a-zA-Z]+))?$/i);
+        if (expr) {
+          valStr = expr[1];
+          if (expr[2] && from === 'km') from = expr[2].toLowerCase();
+          if (expr[3] && to === 'mi') to = expr[3].toLowerCase();
+        }
+      }
+      const v = Number(valStr);
       if (!Number.isFinite(v)) return { text: 'value must be a number' };
-      if (TEMP.includes(from) && TEMP.includes(to)) return { text: `${v}°${from.toUpperCase()} = ${fromC(toC(v, from), to).toFixed(4).replace(/\.0+$/, '')}°${to.toUpperCase()}` };
+      if (TEMP.includes(from) && TEMP.includes(to)) return { text: `${v}°${from.toUpperCase()} = ${fromC(toC(v, from), to).toFixed(4).replace(/\.?0+$/, '')}°${to.toUpperCase()}` };
       for (const [kind, table] of Object.entries(UNITS)) {
         const keys = Object.keys(table).map((k) => k.toLowerCase());
         const f = keys.indexOf(from), t = keys.indexOf(to);
@@ -1375,7 +1604,7 @@ const Tools = (() => {
         [`${a}% of ${b}`, (a / 100 * b).toLocaleString('en-US', { maximumFractionDigits: 4 })],
         [`${b} increased by ${a}%`, (b * (1 + a / 100)).toLocaleString('en-US', { maximumFractionDigits: 4 })],
         [`${b} decreased by ${a}%`, (b * (1 - a / 100)).toLocaleString('en-US', { maximumFractionDigits: 4 })],
-        [`change ${a} → ${b}`, (b === 0 ? '—' : (((b - a) / a) * 100).toFixed(2) + '%')],
+        [`change ${a} → ${b}`, (a === 0 ? '—' : (((b - a) / Math.abs(a)) * 100).toFixed(2) + '%')],
         [`${a} is what % of ${b}`, (b === 0 ? '—' : ((a / b) * 100).toFixed(2) + '%')]
       ].map(([k, v]) => k.padEnd(26) + v).join('\n') };
     } });
@@ -1469,12 +1698,15 @@ const Tools = (() => {
     if (!doc) throw new Error('no word/document.xml inside');
     const xml = new TextDecoder().decode(await ZipCodec.readEntry(doc));
     return xml
-      .replace(/<w:tab\/>/g, '\t')
-      .replace(/<w:br\/>/g, '\n')
+      .replace(/<w:tab\b[^>]*\/?>/g, '\t')
+      .replace(/<w:br\b[^>]*\/?>/g, '\n')
+      .replace(/<w:cr\b[^>]*\/?>/g, '\n')
       .replace(/<\/w:p>/g, '\n')
       .replace(/<\/w:tr>/g, '\n')
       .replace(/<\/w:tc>/g, '\t')
       .replace(/<[^>]+>/g, '')
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+      .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
       .replace(/\t+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   }
@@ -1484,56 +1716,128 @@ const Tools = (() => {
     if (!entries) throw new Error('not a DOCX file');
     const doc = entries.find((e) => e.name === 'word/document.xml');
     if (!doc) throw new Error('no word/document.xml inside');
-    let xml = new TextDecoder().decode(await ZipCodec.readEntry(doc));
-    xml = xml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (para) => {
-      const style = (para.match(/<w:pStyle w:val="([^"]+)"/) || [])[1] || '';
-      let text = para
-        .replace(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g, (m, t) => t)
-        .replace(/<w:tab\/>/g, ' ')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
-      const bold = /<w:b\/>|<w:b /.test(para);
-      if (!text.trim()) return '';
-      const h = style.match(/Heading(\d)/i);
-      if (h) return `<h${h[1]}>${text.trim()}</h${h[1]}>`;
-      if (/ListParagraph/i.test(style)) return `<li>${text.trim()}</li>`;
-      return bold && text.trim().length < 80 ? `<p><strong>${text.trim()}</strong></p>` : `<p>${text.trim()}</p>`;
-    });
-    return `<!doctype html>\n<html><head><meta charset="utf-8"><title>${'Document'}</title></head>\n<body>\n${xml}\n</body></html>\n`;
+    const rawXml = new TextDecoder().decode(await ZipCodec.readEntry(doc));
+    const bodyMatch = rawXml.match(/<w:body\b[^>]*>([\s\S]*?)<\/w:body>/);
+    const bodyXml = bodyMatch ? bodyMatch[1] : rawXml;
+    const decodeXml = (s) => s
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+      .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+    const escHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const renderRuns = (pXml) => {
+      const parts = [];
+      for (const rm of pXml.matchAll(/<w:r\b[^>]*>([\s\S]*?)<\/w:r>/g)) {
+        const rBody = rm[1];
+        const rPr = (rBody.match(/<w:rPr\b[^>]*>([\s\S]*?)<\/w:rPr>/) || [])[1] || '';
+        const b = /<w:b\b(?![^>]*w:val="(?:false|0)")/.test(rPr);
+        const it = /<w:i\b(?![^>]*w:val="(?:false|0)")/.test(rPr);
+        const u = /<w:u\b(?![^>]*w:val="(?:none|false|0)")/.test(rPr);
+        let chunk = '';
+        for (const tok of rBody.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>|<w:br\b[^>]*\/?>|<w:tab\b[^>]*\/?>/g)) {
+          if (tok[1] != null) chunk += escHtml(decodeXml(tok[1]));
+          else if (/^<w:br/i.test(tok[0])) chunk += '<br>';
+          else chunk += '&emsp;';
+        }
+        if (!chunk) continue;
+        if (u) chunk = `<u>${chunk}</u>`;
+        if (it) chunk = `<em>${chunk}</em>`;
+        if (b) chunk = `<strong>${chunk}</strong>`;
+        parts.push(chunk);
+      }
+      return parts.join('');
+    };
+
+    const renderPara = (pXml) => {
+      const style = (pXml.match(/<w:pStyle\s+w:val="([^"]+)"/) || [])[1] || '';
+      const isList = /<w:numPr\b/.test(pXml) || /ListParagraph/i.test(style);
+      const inner = renderRuns(pXml).trim();
+      if (!inner) return null;
+      const hm = style.match(/Heading([1-6])/i);
+      if (hm) return { list: false, html: `<h${hm[1]}>${inner}</h${hm[1]}>` };
+      if (/^Title$/i.test(style)) return { list: false, html: `<h1>${inner}</h1>` };
+      if (isList) return { list: true, html: `<li>${inner}</li>` };
+      return { list: false, html: `<p>${inner}</p>` };
+    };
+
+    const blocks = [];
+    let inList = false;
+    const flushList = () => { if (inList) { blocks.push('</ul>'); inList = false; } };
+
+    // Match top-level <w:tbl>...</w:tbl> or <w:p>...</w:p> in document order
+    for (const m of bodyXml.matchAll(/<w:tbl\b[\s\S]*?<\/w:tbl>|<w:p\b[\s\S]*?<\/w:p>/g)) {
+      const node = m[0];
+      if (node.startsWith('<w:tbl')) {
+        flushList();
+        const rows = [];
+        for (const tr of node.matchAll(/<w:tr\b[\s\S]*?<\/w:tr>/g)) {
+          const cells = [];
+          const isHead = /<w:tblHeader\b/.test(tr[0]);
+          const tag = isHead ? 'th' : 'td';
+          for (const tc of tr[0].matchAll(/<w:tc\b[\s\S]*?<\/w:tc>/g)) {
+            const cellParas = [...tc[0].matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)].map((p) => renderRuns(p[0]).trim()).filter(Boolean);
+            cells.push(`<${tag}>${cellParas.join('<br>')}</${tag}>`);
+          }
+          if (cells.length) rows.push(`<tr>${cells.join('')}</tr>`);
+        }
+        if (rows.length) blocks.push(`<table>\n${rows.join('\n')}\n</table>`);
+      } else {
+        const p = renderPara(node);
+        if (!p) continue;
+        if (p.list) {
+          if (!inList) { blocks.push('<ul>'); inList = true; }
+          blocks.push(p.html);
+        } else {
+          flushList();
+          blocks.push(p.html);
+        }
+      }
+    }
+    flushList();
+    const css = 'body{max-width:780px;margin:2rem auto;padding:0 1.25rem;font:16px/1.65 system-ui,-apple-system,sans-serif;color:#18181b}table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #d4d4d8;padding:.45rem .65rem;text-align:left}th{background:#f4f4f5}';
+    return `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Document</title><style>${css}</style></head>\n<body>\n${blocks.join('\n')}\n</body></html>\n`;
   }
 
   async function xlsxCsv(bytes) {
     const entries = await ZipCodec.list(bytes);
     if (!entries) throw new Error('not an XLSX file');
-    const sheet = entries.find((e) => /^xl\/worksheets\/sheet1\.xml$/.test(e.name));
+    const sheets = entries.filter((e) => /^xl\/worksheets\/[^/]+\.xml$/i.test(e.name)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    const sheet = entries.find((e) => /^xl\/worksheets\/sheet1\.xml$/i.test(e.name)) || sheets[0];
     if (!sheet) throw new Error('no worksheet inside');
+    const unesc = (s) => String(s || '')
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+      .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
     const sharedE = entries.find((e) => e.name === 'xl/sharedStrings.xml');
     const shared = [];
     if (sharedE) {
       const sx = new TextDecoder().decode(await ZipCodec.readEntry(sharedE));
-      for (const m of sx.matchAll(/<si>([\s\S]*?)<\/si>/g)) {
-        shared.push([...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((x) => x[1]).join('').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+      for (const m of sx.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)) {
+        shared.push([...m[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map((x) => unesc(x[1])).join(''));
       }
     }
     const xml = new TextDecoder().decode(await ZipCodec.readEntry(sheet));
     const rows = [];
-    for (const rm of xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
+    for (const rm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
       const cells = [];
-      for (const cm of rm[1].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)) {
-        const attrs = cm[1];
-        const ref = (attrs.match(/r="([A-Z]+)\d+"/) || [])[1] || '';
+      for (const cm of rm[1].matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+        const attrs = cm[1] || '', body = cm[2] || '';
+        const ref = (attrs.match(/\br="([A-Z]+)\d+"/) || [])[1] || '';
         const col = ref ? [...ref].reduce((a, ch) => a * 26 + (ch.charCodeAt(0) - 64), 0) - 1 : cells.length;
-        const type = (attrs.match(/t="([^"]+)"/) || [])[1];
-        const v = (cm[2].match(/<v>([\s\S]*?)<\/v>/) || [])[1];
-        const isv = (cm[2].match(/<is>[\s\S]*?<t[^>]*>([\s\S]*?)<\/t>/) || [])[1];
-        let val = type === 's' && v != null ? (shared[+v] || '') : type === 'inlineStr' && isv != null ? isv : v != null ? v : '';
-        val = String(val).replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        const type = (attrs.match(/\bt="([^"]+)"/) || [])[1] || '';
+        const v = (body.match(/<v\b[^>]*>([\s\S]*?)<\/v>/) || [])[1];
+        const isBlock = (body.match(/<is\b[^>]*>([\s\S]*?)<\/is>/) || [])[1];
+        let val = '';
+        if (type === 's' && v != null) val = shared[+v] || '';
+        else if (type === 'inlineStr' && isBlock != null) val = [...isBlock.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map((x) => unesc(x[1])).join('');
+        else if (type === 'b' && v != null) val = v === '1' ? 'TRUE' : 'FALSE';
+        else if (v != null) val = unesc(v);
         while (cells.length < col) cells.push('');
         cells[col] = val;
       }
       rows.push(cells);
     }
-    const esc = (t) => (/[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t);
+    const esc = (t) => (/[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t);
     return rows.map((r) => r.map(esc).join(',')).join('\n');
   }
 
@@ -1608,7 +1912,7 @@ const Tools = (() => {
     id: 'img-b64', group: 'Image', icon: 'i-b64', kind: 'files',
     title: 'Image → Base64', blurb: 'Data URI for CSS or HTML',
     accept: 'image/*', multiple: true, tags: 'base64 data uri inline embed css html',
-    options: [{ key: 'wrap', label: 'Line width', type: 'select', values: [['80', '80 chars'], ['0', 'single line'], ['64', '64 chars']], def: '80' }],
+    options: [{ key: 'wrap', label: 'Line width', type: 'select', values: [['0', 'single line (paste-ready)'], ['80', '80 chars'], ['64', '64 chars']], def: '0' }],
     async run(files, o) {
       const out = [];
       for (const f of files) {
@@ -1619,7 +1923,7 @@ const Tools = (() => {
         const width = parseInt(o.wrap, 10) || 0;
         const body = width ? b64.replace(new RegExp(`(.{${width}})`, 'g'), '$1\n').trim() : b64;
         const text = `/* ${f.name} — ${f.bytes.length} bytes → ${b64.length} base64 chars */\n`
-          + `/* CSS:  background-image: url("data:${mime};base64,…");  */\n`
+          + `/* HTML: <img src="data:${mime};base64,…"> | CSS: url("data:${mime};base64,…") */\n`
           + `data:${mime};base64,${body}\n`;
         out.push({ name: `${stem(f.name)}.base64.txt`, bytes: Util.utf8(text),
           note: `${mime} · ${(b64.length / 1024).toFixed(1)} KB base64` });

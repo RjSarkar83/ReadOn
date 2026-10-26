@@ -29,7 +29,7 @@ self.onmessage = async (ev) => {
     try {
       const res = await tool.run(msg.files || [], msg.opts || {});
       const files = (res.files || []).map((f) => ({ name: f.name, bytes: f.bytes, note: f.note }));
-      const transfer = files.map((f) => f.bytes && f.bytes.buffer).filter(Boolean);
+      const transfer = [...new Set(files.map((f) => f.bytes && f.bytes.buffer).filter(Boolean))];
       post({ id: msg.id, type: 'done', res: Object.assign({}, res, { files }) }, transfer);
     } catch (e) {
       /* some operations (SVG rasterising, <img> decoding) need a real DOM: the page

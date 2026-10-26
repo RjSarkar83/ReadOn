@@ -12,7 +12,11 @@ const ZipCodec = (() => {
   function findEOCD(b) {
     const min = Math.max(0, b.length - 66000);
     for (let i = b.length - 22; i >= min; i--) {
-      if (b[i] === 0x50 && b[i + 1] === 0x4b && b[i + 2] === 0x05 && b[i + 3] === 0x06) return i;
+      if (b[i] === 0x50 && b[i + 1] === 0x4b && b[i + 2] === 0x05 && b[i + 3] === 0x06) {
+        const commentLen = u16(b, i + 20);
+        const cdOff = u32(b, i + 16);
+        if (i + 22 + commentLen <= b.length && (cdOff < i || cdOff === 0xFFFFFFFF)) return i;
+      }
     }
     return -1;
   }

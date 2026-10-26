@@ -678,33 +678,186 @@ const PDFEngine = (() => {
 
     mark('structure+streams');
     /* 3 ─ collect raster XObjects (encoding happens later, inside the size budget) */
+    const rawPdfStrBytes = (val) => {
+      if (!val) return null;
+      if (val.t === 'hex') {
+        const hx = String(val.raw || '').replace(/[<>\s]/g, '');
+        const out = new Uint8Array(Math.floor(hx.length / 2));
+        for (let i = 0; i < out.length; i++) out[i] = parseInt(hx.slice(i * 2, i * 2 + 2), 16) || 0;
+        return out;
+      }
+      if (val.t === 'str') {
+        let body = String(val.raw || '');
+        if (body.startsWith('(') && body.endsWith(')')) body = body.slice(1, -1);
+        body = body.replace(/\\([nrtbf()\\]|[0-7]{1,3})/g, (m, g) => {
+          if (/^[0-7]/.test(g)) return String.fromCharCode(parseInt(g, 8));
+          return { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '(': '(', ')': ')', '\\': '\\' }[g] || g;
+        });
+        return Util.unlatin1(body);
+      }
+      return null;
+    };
+
+    const resolveDeep = (val, depth = 0) => {
+      if (!val || depth > 8) return val;
+      const r = doc.resolve(val);
+      if (!r) return null;
+      if (r.t === 'array' && Array.isArray(r.v)) {
+        return { t: 'array', v: r.v.map(x => resolveDeep(x, depth + 1)) };
+      }
+      return r;
+    };
+
+    const resolveCS = async (csVal, depth = 0) => {
+      if (depth > 6) return { name: 'other', channels: 0 };
+      const cs = doc.resolve(csVal);
+      if (!cs || cs.t === 'null') return { name: 'other', channels: 0 };
+      const nm = nameOf(cs);
+      if (nm === 'DeviceGray' || nm === 'CalGray' || nm === 'G') return { name: 'DeviceGray', channels: 1 };
+      if (nm === 'DeviceRGB' || nm === 'CalRGB' || nm === 'RGB') return { name: 'DeviceRGB', channels: 3 };
+      if (nm === 'DeviceCMYK' || nm === 'CMYK') return { name: 'DeviceCMYK', channels: 4 };
+      if (cs.t === 'array' && cs.v && cs.v.length) {
+        const head = nameOf(doc.resolve(cs.v[0]));
+        if (head === 'CalGray' || head === 'G') return { name: 'DeviceGray', channels: 1 };
+        if (head === 'CalRGB' || head === 'RGB') return { name: 'DeviceRGB', channels: 3 };
+        if (head === 'DeviceGray') return { name: 'DeviceGray', channels: 1 };
+        if (head === 'DeviceRGB') return { name: 'DeviceRGB', channels: 3 };
+        if (head === 'DeviceCMYK') return { name: 'DeviceCMYK', channels: 4 };
+        if (head === 'ICCBased' && cs.v[1]) {
+          const iccRef = refOf(cs.v[1]);
+          const iccObj = iccRef != null ? doc.obj(iccRef) : null;
+          const iccDict = iccObj && iccObj.value ? iccObj.value : doc.resolve(cs.v[1]);
+          const nCh = iccDict ? num(doc.resolve(get(iccDict, 'N')), 0) : 0;
+          if (nCh === 1) return { name: 'DeviceGray', channels: 1 };
+          if (nCh === 3) return { name: 'DeviceRGB', channels: 3 };
+          if (nCh === 4) return { name: 'DeviceCMYK', channels: 4 };
+          if (iccDict && get(iccDict, 'Alternate')) return resolveCS(get(iccDict, 'Alternate'), depth + 1);
+        }
+        if ((head === 'Indexed' || head === 'I') && cs.v.length >= 4) {
+          const baseCS = await resolveCS(cs.v[1], depth + 1);
+          const hival = num(doc.resolve(cs.v[2]), 255);
+          let lut = null;
+          const lutRef = refOf(cs.v[3]);
+          if (lutRef != null) {
+            const lo = doc.obj(lutRef);
+            if (lo && lo.sS != null) {
+              const raw = doc.streamBytes(lo);
+              const lflt = resolveDeep(get(lo.value, 'Filter'));
+              const fl = PDFFilters.normFilters(lflt);
+              lut = fl.length ? await PDFFilters.decode(raw, lflt, resolveDeep(get(lo.value, 'DecodeParms'))) : raw;
+            } else if (lo && lo.value) {
+              lut = rawPdfStrBytes(lo.value);
+            }
+          } else {
+            lut = rawPdfStrBytes(doc.resolve(cs.v[3]));
+          }
+          if (lut && baseCS.channels === 3 && lut.length >= (hival + 1) * 3) {
+            return { name: 'IndexedRGB', channels: 1, palette: lut, hival };
+          }
+        }
+        return { name: head || 'array', channels: 0 };
+      }
+      return { name: nm || 'other', channels: 0 };
+    };
+
+    const inspectSMask = async (smVal, imgW, imgH) => {
+      const rn = refOf(smVal);
+      if (rn == null) return { opaque: false, alpha: null };
+      const so = doc.obj(rn);
+      if (!so || !so.value || so.value.t !== 'dict' || so.sS == null) return { opaque: false, alpha: null };
+      const sbpc = num(doc.resolve(get(so.value, 'BitsPerComponent')), 8);
+      if (sbpc !== 8 && sbpc !== 16 && sbpc !== 1) return { opaque: false, alpha: null };
+      const sw = num(doc.resolve(get(so.value, 'Width')), 0), sh = num(doc.resolve(get(so.value, 'Height')), 0);
+      if (!sw || !sh) return { opaque: false, alpha: null };
+      const raw = doc.streamBytes(so);
+      const sflt = resolveDeep(get(so.value, 'Filter'));
+      const fl = PDFFilters.normFilters(sflt);
+      const decoded = fl.length ? await PDFFilters.decode(raw, sflt, resolveDeep(get(so.value, 'DecodeParms'))) : raw;
+      if (!decoded || !decoded.length) return { opaque: false, alpha: null };
+      let data = decoded;
+      if (sbpc === 16 && decoded.length >= sw * sh * 2) {
+        data = new Uint8Array(sw * sh);
+        for (let i = 0; i < sw * sh; i++) data[i] = decoded[i * 2];
+      } else if (sbpc === 1) {
+        const rowBytes = Math.ceil(sw / 8);
+        if (decoded.length < rowBytes * sh) return { opaque: false, alpha: null };
+        data = new Uint8Array(sw * sh);
+        for (let y = 0; y < sh; y++) {
+          const rOff = y * rowBytes;
+          for (let x = 0; x < sw; x++) {
+            const bit = (decoded[rOff + (x >> 3)] >> (7 - (x & 7))) & 1;
+            data[y * sw + x] = bit ? 255 : 0;
+          }
+        }
+      }
+      if (data.length < sw * sh) return { opaque: false, alpha: null };
+      let allOpaque = true;
+      const nS = sw * sh;
+      for (let i = 0; i < nS; i++) { if (data[i] < 252) { allOpaque = false; break; } }
+      if (allOpaque) return { opaque: true, alpha: null };
+      if (sw === imgW && sh === imgH) return { opaque: false, alpha: data };
+      const scaled = new Uint8Array(imgW * imgH);
+      for (let y = 0; y < imgH; y++) {
+        const sy = Math.min(sh - 1, Math.floor((y * sh) / imgH)) * sw;
+        const dy = y * imgW;
+        for (let x = 0; x < imgW; x++) {
+          scaled[dy + x] = data[sy + Math.min(sw - 1, Math.floor((x * sw) / imgW))];
+        }
+      }
+      return { opaque: false, alpha: scaled };
+    };
+
+    const RAW_FILTERS = new Set(['FlateDecode', 'Fl', 'LZWDecode', 'LZW', 'ASCII85Decode', 'A85', 'ASCIIHexDecode', 'AHx', 'RunLengthDecode', 'RL']);
     const imageJobs = [];
     if (opts.imageLevels && opts.imageEncode && opts.imageLevels.length) {
       for (const o of doc.objs.values()) {
         const d = o.value;
         if (!d || d.t !== 'dict' || o.sS == null) continue;
-        if (nameOf(get(d, 'Subtype')) !== 'Image') continue;
-        const filterV = get(d, 'Filter');
+        if (nameOf(doc.resolve(get(d, 'Subtype'))) !== 'Image') continue;
+        const imMask = doc.resolve(get(d, 'ImageMask'));
+        if (imMask && imMask.t === 'bool' && imMask.v === true) continue;
+        const filterV = resolveDeep(get(d, 'Filter'));
         const fl = PDFFilters.normFilters(filterV);
         const last = fl.length ? fl[fl.length - 1] : null;
-        const kind = last === 'DCTDecode' ? 'jpeg' : last === 'JPXDecode' ? 'jp2'
-          : (!fl.length || fl.every(f => ['FlateDecode', 'Fl', 'LZWDecode', 'ASCII85Decode', 'ASCIIHexDecode', 'RunLengthDecode'].includes(f))) ? 'raw' : 'other';
+        const kind = (last === 'DCTDecode' || last === 'DCT') ? 'jpeg'
+          : (last === 'JPXDecode' || last === 'JPX') ? 'jp2'
+          : (!fl.length || fl.every(f => RAW_FILTERS.has(f))) ? 'raw' : 'other';
         if (kind === 'jp2' || kind === 'other') continue;
-        const w = num(get(d, 'Width')), h = num(get(d, 'Height'));
-        if (!w || !h || w * h < 1600) continue;
+        const w = num(doc.resolve(get(d, 'Width'))), h = num(doc.resolve(get(d, 'Height')));
+        if (!w || !h || w * h < 1024) continue;
         const rawStream = doc.streamBytes(o);
+        const decParms = resolveDeep(get(d, 'DecodeParms'));
         let payload = rawStream;
         if (kind === 'jpeg' && fl.length > 1) {
-          const pre = await PDFFilters.decode(rawStream, fl.slice(0, -1), get(d, 'DecodeParms'));
+          const pre = await PDFFilters.decode(rawStream, fl.slice(0, -1), decParms);
           if (pre) payload = pre;
         }
+        const csInfo = await resolveCS(get(d, 'ColorSpace'));
+        const smaskRaw = get(d, 'SMask');
+        const smaskRes = doc.resolve(smaskRaw);
+        const hasValidSMask = !!(smaskRes && smaskRes.t !== 'null');
+        const maskRaw = get(d, 'Mask');
+        const maskRes = doc.resolve(maskRaw);
+        const hasValidMask = !!(maskRes && maskRes.t !== 'null');
+        let smInfo = { opaque: false, alpha: null };
+        if (hasValidSMask && !hasValidMask) {
+          try { smInfo = await inspectSMask(smaskRaw, w, h); } catch (e) { smInfo = { opaque: false, alpha: null }; }
+        }
+        const decArr = resolveDeep(get(d, 'Decode'));
+        const invert1Bit = !!(decArr && decArr.t === 'array' && decArr.v && decArr.v.length >= 2 && num(decArr.v[0], 0) === 1 && num(decArr.v[1], 1) === 0);
         imageJobs.push({
           obj: o, dict: d, kind, bytes: payload, rawStream, filters: fl,
           width: w, height: h, streamLen: rawStream.length,
-          bpc: num(get(d, 'BitsPerComponent'), 8),
-          colorSpace: nameOf(get(d, 'ColorSpace')) || (get(d, 'ColorSpace') && get(d, 'ColorSpace').t === 'array' ? 'array' : 'other'),
-          decodeParms: get(d, 'DecodeParms'),
-          hasSMask: !!get(d, 'SMask') || !!get(d, 'Mask'),
+          bpc: num(doc.resolve(get(d, 'BitsPerComponent')), 8),
+          colorSpace: csInfo.name,
+          channels: csInfo.channels,
+          palette: csInfo.palette || null,
+          decodeParms: decParms,
+          invert1Bit,
+          hasSMask: (hasValidSMask && !smInfo.opaque) || hasValidMask,
+          hasHardMask: hasValidMask,
+          smaskAlpha: smInfo.alpha,
+          opaqueSMask: smInfo.opaque || (!hasValidSMask && smaskRaw != null),
           objNum: o.num
         });
         stats.images++;
@@ -919,13 +1072,15 @@ const PDFEngine = (() => {
 
     mark('gc');
     /* 7 ─ serialize candidates (cheap), verify only what we intend to ship */
-    const buildCandidates = async () => {
+    const buildAllCandidates = async () => {
       const list = [{ bytes: serialize(doc, live), label: 'classic xref' }];
       if (parseFloat(doc.version) >= 1.5 || doc.hadObjStm) {
         try { list.push({ bytes: await serializeModern(doc, live), label: 'object streams' }); } catch (e) { /* classic only */ }
       }
-      return list.filter(c => c.bytes.length < bytes.length).sort((a, b) => a.bytes.length - b.bytes.length);
+      return list.sort((a, b) => a.bytes.length - b.bytes.length);
     };
+    const buildCandidates = async () => (await buildAllCandidates()).filter(c => c.bytes.length < bytes.length);
+
     const verify = async (candidate, quick) => {
       if (!candidate || candidate.length < 64) return false;
       try {
@@ -948,9 +1103,10 @@ const PDFEngine = (() => {
     };
 
     let chosen = null;
-    let cands = await buildCandidates();
-    if (!cands.length) return { bytes, stats, warnings: warnings.concat('no verified rebuild was smaller — file returned untouched') };
-    const baseline = cands[0];
+    const initialAll = await buildAllCandidates();
+    if (!initialAll.length) return { bytes, stats, warnings: warnings.concat('no verified rebuild was smaller — file returned untouched') };
+    const baseline = initialAll[0];
+    let cands = initialAll.filter(c => c.bytes.length < bytes.length);
 
     /* 8 ─ budgeted raster ladder, inside the same parse */
     const applyPayload = (job, payload) => {
@@ -974,8 +1130,9 @@ const PDFEngine = (() => {
       // /Decode inverts sample interpretation ([1 0] masks are common). It must survive a
       // lossless re-filter, and must go only when the samples themselves are replaced.
       if (!payload.lossless) dictDel(d, 'Decode');
+      if (payload.dropSMask && !payload.lossless) { dictDel(d, 'SMask'); dictDel(d, 'Mask'); }
       if (payload.filter === 'DCTDecode') {
-        dictSet(d, 'ColorSpace', { t: 'name', v: 'DeviceRGB', raw: 'DeviceRGB' });
+        if (!payload.lossless) dictSet(d, 'ColorSpace', { t: 'name', v: 'DeviceRGB', raw: 'DeviceRGB' });
         dictSet(d, 'BitsPerComponent', { t: 'num', raw: '8', v: 8 });
       } else if (payload.filter === 'FlateDecode') {
         if (payload.colorSpace) dictSet(d, 'ColorSpace', payload.colorSpace);
@@ -984,44 +1141,68 @@ const PDFEngine = (() => {
       o.dirty = true;
     };
 
-    const target = opts.targetBytes || 0;
+    const rawTarget = opts.targetBytes || 0;
+    const target = opts.customBytes ? rawTarget
+      : (rawTarget && opts.targetPct ? Math.min(rawTarget, Math.round(baseline.bytes.length * (1 - (opts.targetPct * 0.85) / 100))) : rawTarget);
     if (imageJobs.length && (!target || baseline.bytes.length > target)) {
       const levels = opts.imageLevels;
       let bestPayloads = null, bestEstimate = Infinity, bestTotal = Infinity;
-      let prevEstimate = Infinity;
       for (let li = 0; li < levels.length; li++) {
         const level = levels[li];
         const payloads = new Map();
         let total = 0, touched = 0;
         for (const job of imageJobs) {
           let payload = null;
-          try { payload = await opts.imageEncode(job, level); } catch (e) { payload = null; }
+          try {
+            payload = await opts.imageEncode(job, level);
+          } catch (e) {
+            if (e && e.code === 'NO_CANVAS') throw e;
+            payload = null;
+          }
           if (payload && payload.bytes && payload.bytes.length < job.streamLen * 0.995) { total += payload.bytes.length; touched++; payloads.set(job.objNum, payload); }
           else total += job.streamLen;
         }
-        if (!target) break;                                       // pure-lossless mode: one rung only
-        if (!touched) continue;                                   // this rung cannot help anything
-        const estimate = baseline.bytes.length - stats.imageBytesBefore + total;
-        if (estimate < bestEstimate) { bestEstimate = estimate; bestPayloads = payloads; bestTotal = total; }
-        if (!target || estimate <= target) break;                 // first rung that meets the target wins
-        // if the raster trade has bought <3 % of the file by now, more rungs will not help
-        if (li >= 1 && 1 - bestEstimate / baseline.bytes.length < 0.03) break;
-        prevEstimate = estimate;
+        if (touched) {
+          const estimate = baseline.bytes.length - stats.imageBytesBefore + total;
+          if (estimate < bestEstimate) { bestEstimate = estimate; bestPayloads = payloads; bestTotal = total; }
+          if (!target || estimate <= target) break;                 // first rung that meets the target wins
+        }
+        if (!target) break;                                         // pure-lossless mode: one rung only
       }
       if (bestPayloads && bestPayloads.size) {
+        let droppedMasks = false;
         for (const job of imageJobs) {
           const payload = bestPayloads.get(job.objNum);
-          if (payload) applyPayload(job, payload);
+          if (payload) {
+            if (payload.dropSMask && !payload.lossless) droppedMasks = true;
+            applyPayload(job, payload);
+          }
+        }
+        if (droppedMasks) {
+          live.clear();
+          const q2 = [doc.rootNum];
+          while (q2.length) {
+            const n0 = q2.pop();
+            if (n0 == null || live.has(n0) || !doc.objs.has(n0)) continue;
+            live.add(n0);
+            const o = doc.objs.get(n0);
+            const dt = o.dirty || o.newStream != null ? ser(o.value) : o.dictRaw;
+            for (const r of doc.refsIn(dt)) if (!live.has(r) && doc.objs.has(r)) q2.push(r);
+          }
+          for (const p of doc.pages()) if (!live.has(p.num)) live.add(p.num);
         }
         stats.imagesRecompressed = bestPayloads.size;
         stats.imageBytesAfter = bestTotal;
-        for (const c of await buildCandidates()) {
-          if (c.bytes.length < baseline.bytes.length) { cands = [c]; break; }
+        const rebuilt = await buildCandidates();
+        if (rebuilt.length && (!cands.length || rebuilt[0].bytes.length < cands[0].bytes.length)) {
+          cands = rebuilt;
         }
       }
     } else if (imageJobs.length) {
       stats.imageBytesAfter = stats.imageBytesBefore;
     }
+
+    if (!cands.length) return { bytes, stats, warnings: warnings.concat('no verified rebuild was smaller — file returned untouched') };
 
     mark('serialize');
     chosen = await pickVerified(cands, opts.quickVerify);

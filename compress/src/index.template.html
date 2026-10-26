@@ -113,7 +113,7 @@
   <div class="hero">
     <div>
       <h2 class="sectH1">Compress<span>.</span></h2>
-      <p>Reduce file size · keep the quality · 10 / 25 / 50 / 75 / 90 % / Extreme</p>
+      <p>Exact KB / MB target · All levels &amp; formats in 1 upload · 10–90% &amp; Extreme</p>
     </div>
     <div class="tags">
       <span class="tag">PDF</span><span class="tag">JPG</span><span class="tag">PNG</span>
@@ -140,6 +140,44 @@
   <section class="sect">
     <div class="sect-h"><span class="lbl">Compression target</span><span class="line"></span><span class="cap" id="presetHint">balanced</span></div>
     <div class="presets" id="presets" role="group" aria-label="Compression target"></div>
+
+    <div class="sizebar" id="sizeBar">
+      <div class="sb-top">
+        <div class="sb-lbl">
+          <span class="sb-title"><svg><use href="#i-sliders"/></svg>Exact Target Size <i>(KB / MB)</i></span>
+          <span class="sb-sub">Type or tap how many KB or MB you want — compresses uploaded files directly without re-uploading</span>
+        </div>
+        <div class="sb-fmt">
+          <span class="sb-flbl">Image format</span>
+          <div class="seg" id="outFmtSeg" role="group" aria-label="Image output format">
+            <button type="button" data-fmt="auto" aria-pressed="true">Original</button>
+            <button type="button" data-fmt="jpeg" aria-pressed="false">JPG</button>
+            <button type="button" data-fmt="png" aria-pressed="false">PNG</button>
+            <button type="button" data-fmt="webp" aria-pressed="false">WEBP</button>
+          </div>
+        </div>
+      </div>
+      <div class="sb-bot">
+        <div class="sb-inp">
+          <input type="number" id="targetVal" min="1" step="any" placeholder="Size e.g. 100" aria-label="Target file size">
+          <div class="seg sb-unit" id="targetUnit" role="group" aria-label="Size unit">
+            <button type="button" data-u="KB" aria-pressed="true">KB</button>
+            <button type="button" data-u="MB" aria-pressed="false">MB</button>
+          </div>
+          <button type="button" class="btn sm solid" id="applyTargetBtn">Set Size</button>
+          <button type="button" class="btn sm ghost" id="clearTargetBtn" hidden>Reset</button>
+        </div>
+        <div class="sb-chips" id="sizeChips" role="group" aria-label="Quick target sizes">
+          <button type="button" class="schip" data-kb="20">20 KB</button>
+          <button type="button" class="schip" data-kb="50">50 KB</button>
+          <button type="button" class="schip" data-kb="100">100 KB</button>
+          <button type="button" class="schip" data-kb="200">200 KB</button>
+          <button type="button" class="schip" data-kb="500">500 KB</button>
+          <button type="button" class="schip" data-kb="1024">1 MB</button>
+          <button type="button" class="schip" data-kb="2048">2 MB</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <details class="adv" id="adv">

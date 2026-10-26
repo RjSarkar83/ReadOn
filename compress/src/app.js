@@ -10,11 +10,17 @@
     set(k, v) { try { localStorage.setItem('readon.compress.' + k, JSON.stringify(v)); } catch (e) {} }
   };
 
+  const persistedOpts = store.get('options.v2', {});
+  delete persistedOpts.customBytes;
+  delete persistedOpts.outFormat;
+
   const state = {
     preset: store.get('preset', 'p50'),
+    allMode: false,
+    targetUnit: store.get('targetUnit', 'KB'),
     options: Object.assign(
-      { pdfText: 'auto', pdfAnnots: 'auto', pdfBookmarks: 'auto', pdfAttachments: 'auto', maxDim: 0, allowWebp: false },
-      store.get('options', {})
+      { pdfText: 'auto', pdfAnnots: 'auto', pdfBookmarks: 'auto', pdfAttachments: 'auto', maxDim: 0, allowWebp: false, customBytes: 0, outFormat: 'auto' },
+      persistedOpts
     ),
     items: [],
     running: false,
@@ -38,30 +44,179 @@
   });
   applyTheme(store.get('theme', 'light'));
 
-  /* ── presets ───────────────────────────────────────── */
+  /* ── presets & exact KB/MB target ──────────────────── */
+  function updatePresetHint() {
+    const hintEl = $('#presetHint');
+    if (!hintEl) return;
+    if (state.allMode) {
+      hintEl.textContent = '1 upload → generates all levels & formats at once';
+    } else if (state.options.customBytes > 0) {
+      hintEl.textContent = 'exact target ≤ ' + Util.fmtBytes(state.options.customBytes).toLowerCase();
+    } else {
+      const cur = Compressor.PRESETS.find(p => p.id === state.preset);
+      hintEl.textContent = cur ? cur.hint.toLowerCase() : '';
+    }
+  }
+
   function renderPresets() {
     const box = $('#presets');
     box.innerHTML = '';
+    const hasCustom = state.options.customBytes > 0;
     for (const p of Compressor.PRESETS) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'preset';
       b.dataset.id = p.id;
-      b.setAttribute('aria-pressed', String(p.id === state.preset));
+      b.setAttribute('aria-pressed', String(!state.allMode && !hasCustom && p.id === state.preset));
       b.innerHTML = `<span class="zap">${p.target ? '−' + p.target + '%' : '0%'}</span><b>${p.id === 'lossless' ? 'Lossless' : p.label}</b><span>${p.hint}</span>`;
       b.addEventListener('click', () => {
         state.preset = p.id;
+        state.allMode = false;
+        state.options.customBytes = 0;
+        const inp = $('#targetVal');
+        if (inp) inp.value = '';
         store.set('preset', p.id);
+        syncSizeBar();
         renderPresets();
-        $('#presetHint').textContent = p.hint.toLowerCase();
-        markStale();
+        updatePresetHint();
+        rerunUploadedNow();
       });
       box.appendChild(b);
     }
-    const cur = Compressor.PRESETS.find(p => p.id === state.preset);
-    $('#presetHint').textContent = cur ? cur.hint.toLowerCase() : '';
+    const allBtn = document.createElement('button');
+    allBtn.type = 'button';
+    allBtn.className = 'allmode';
+    allBtn.id = 'allModeBtn';
+    allBtn.setAttribute('aria-pressed', String(!!state.allMode));
+    allBtn.innerHTML = `<span class="zap">ALL IN 1</span><b>All Types</b><span>1 upload → all sizes &amp; formats</span>`;
+    allBtn.addEventListener('click', () => {
+      state.allMode = !state.allMode;
+      if (state.allMode) {
+        state.options.customBytes = 0;
+        const inp = $('#targetVal');
+        if (inp) inp.value = '';
+      }
+      syncSizeBar();
+      renderPresets();
+      updatePresetHint();
+      if (state.allMode && state.items.length) {
+        state.items.forEach(it => { ensureVariants(it); });
+      }
+    });
+    box.appendChild(allBtn);
+    updatePresetHint();
   }
+
+  function syncSizeBar() {
+    const sb = $('#sizeBar');
+    if (!sb) return;
+    const cb = state.options.customBytes || 0;
+    sb.classList.toggle('active', cb > 0);
+    const clr = $('#clearTargetBtn');
+    if (clr) clr.hidden = !(cb > 0);
+    $$('#targetUnit button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.u === state.targetUnit)));
+    $$('#outFmtSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fmt === (state.options.outFormat || 'auto'))));
+    $$('#sizeChips .schip').forEach(ch => {
+      const chipBytes = Number(ch.dataset.kb) * 1024;
+      ch.classList.toggle('on', cb > 0 && Math.abs(cb - chipBytes) < 64);
+    });
+  }
+
+  let runEpoch = 0;
+
+  function rerunUploadedNow() {
+    if (!state.items.length) return;
+    runEpoch++;
+    if (state.running) {
+      Pool.stop();
+      state.running = false;
+    }
+    state.items.forEach(i => {
+      i.status = 'idle'; i.res = null; i.stale = false; i.pct = 0;
+      i.variants = null; i.variantsRunning = false;
+      if (!state.allMode) i.showVariants = false;
+    });
+    const rr = $('#rerun');
+    if (rr) rr.hidden = true;
+    render();
+    runQueue();
+  }
+
+  function applyCustomBytes(bytes) {
+    state.options.customBytes = Math.max(512, Math.floor(bytes));
+    state.allMode = false;
+    syncSizeBar();
+    renderPresets();
+    rerunUploadedNow();
+  }
+
+  function clearCustomBytes() {
+    state.options.customBytes = 0;
+    const inp = $('#targetVal');
+    if (inp) inp.value = '';
+    syncSizeBar();
+    renderPresets();
+    rerunUploadedNow();
+  }
+
   renderPresets();
+  syncSizeBar();
+
+  if ($('#targetUnit')) {
+    $('#targetUnit').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-u]');
+      if (!b) return;
+      state.targetUnit = b.dataset.u;
+      store.set('targetUnit', state.targetUnit);
+      syncSizeBar();
+      const v = parseFloat($('#targetVal').value);
+      if (isFinite(v) && v > 0 && state.options.customBytes > 0) {
+        applyCustomBytes(v * (state.targetUnit === 'MB' ? 1048576 : 1024));
+      }
+    });
+  }
+  if ($('#applyTargetBtn')) {
+    const submitTarget = () => {
+      const v = parseFloat($('#targetVal').value);
+      if (!isFinite(v) || v <= 0) { toast('Enter target size in ' + state.targetUnit + ' first'); return; }
+      applyCustomBytes(v * (state.targetUnit === 'MB' ? 1048576 : 1024));
+    };
+    $('#applyTargetBtn').addEventListener('click', submitTarget);
+    $('#targetVal').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitTarget(); } });
+  }
+  if ($('#clearTargetBtn')) {
+    $('#clearTargetBtn').addEventListener('click', clearCustomBytes);
+  }
+  if ($('#sizeChips')) {
+    $('#sizeChips').addEventListener('click', (e) => {
+      const ch = e.target.closest('.schip[data-kb]');
+      if (!ch) return;
+      const kb = Number(ch.dataset.kb);
+      const bytes = kb * 1024;
+      if (state.options.customBytes > 0 && Math.abs(state.options.customBytes - bytes) < 64) {
+        clearCustomBytes();
+        return;
+      }
+      if (kb >= 1024 && kb % 1024 === 0) {
+        state.targetUnit = 'MB';
+        $('#targetVal').value = String(kb / 1024);
+      } else {
+        state.targetUnit = 'KB';
+        $('#targetVal').value = String(kb);
+      }
+      store.set('targetUnit', state.targetUnit);
+      applyCustomBytes(bytes);
+    });
+  }
+  if ($('#outFmtSeg')) {
+    $('#outFmtSeg').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-fmt]');
+      if (!b) return;
+      state.options.outFormat = b.dataset.fmt;
+      syncSizeBar();
+      rerunUploadedNow();
+    });
+  }
 
   /* ── advanced controls ─────────────────────────────── */
   function syncControls() {
@@ -84,17 +239,17 @@
       if (!b || !seg.contains(b)) return;
       const key = seg.dataset.opt;
       state.options[key] = seg.dataset.num === '1' ? Number(b.dataset.v) : b.dataset.v;
-      store.set('options', state.options);
+      store.set('options.v2', state.options);
       syncControls();
-      markStale();
+      rerunUploadedNow();
     });
   });
   $$('.switch[data-flag]').forEach(sw => {
     sw.addEventListener('click', () => {
       state.options[sw.dataset.flag] = !state.options[sw.dataset.flag];
-      store.set('options', state.options);
+      store.set('options.v2', state.options);
       syncControls();
-      markStale();
+      rerunUploadedNow();
     });
   });
   syncControls();
@@ -264,17 +419,25 @@
   }
   const mimeFor = (name) => ({
     pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    webp: 'image/webp', svg: 'image/svg+xml', gz: 'application/gzip', zip: 'application/zip',
+    webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp', ico: 'image/x-icon', jp2: 'image/jp2',
+    svg: 'image/svg+xml', gz: 'application/gzip', zip: 'application/zip', epub: 'application/epub+zip',
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    json: 'application/json', txt: 'text/plain', html: 'text/html', css: 'text/css', js: 'text/javascript'
+    csv: 'text/csv', tsv: 'text/tab-separated-values', md: 'text/markdown', xml: 'application/xml',
+    yaml: 'text/yaml', yml: 'text/yaml', json: 'application/json', txt: 'text/plain', html: 'text/html', css: 'text/css', js: 'text/javascript'
   }[extOf(name)] || 'application/octet-stream');
 
   /* ── intake ────────────────────────────────────────── */
   function addFiles(fileList) {
     const incoming = [...fileList];
     if (!incoming.length) return;
+    const tv = $('#targetVal') ? parseFloat($('#targetVal').value) : 0;
+    if (!state.allMode && isFinite(tv) && tv > 0 && !state.options.customBytes) {
+      state.options.customBytes = Math.max(512, Math.floor(tv * (state.targetUnit === 'MB' ? 1048576 : 1024)));
+      syncSizeBar();
+      renderPresets();
+    }
     for (const f of incoming) {
       state.items.push({
         id: 'f' + (++state.seq), file: f, name: f.name, size: f.size,
@@ -313,68 +476,162 @@
 
   async function runQueue() {
     if (state.running) return;
+    const myEpoch = runEpoch;
     state.running = true;
     const stopBtn = $('#stop');
     if (stopBtn) stopBtn.hidden = false;
     const active = new Set();
     const start = (item) => {
-      const p = processItem(item).finally(() => active.delete(p));
+      const p = processItem(item, myEpoch).finally(() => active.delete(p));
       active.add(p);
     };
     for (;;) {
+      if (myEpoch !== runEpoch) return;
       const next = state.items.find(i => i.status === 'idle');
       if (!next && active.size === 0) break;
       if (!next) { await Promise.race(active); continue; }
-      while (active.size >= lanes() && state.items.some(i => i.status === 'idle')) await Promise.race(active);
+      while (active.size >= lanes() && state.items.some(i => i.status === 'idle')) {
+        await Promise.race(active);
+        if (myEpoch !== runEpoch) return;
+      }
+      if (myEpoch !== runEpoch) return;
       start(next);
       if (!Pool.ok) await Promise.all([...active]);     // single lane: stay sequential
     }
     await Promise.all([...active]);
+    if (myEpoch !== runEpoch) return;
     state.running = false;
     if (stopBtn) stopBtn.hidden = true;
     renderTotals();
     if (state.items.some(i => i.status === 'idle')) runQueue();   // items queued during the run
   }
 
-  async function processItem(item) {
+  async function compressSingle(item, presetId, customOpts, onTick) {
+    let res = null;
+    if (!item.noWorker) {
+      try {
+        res = await Pool.run(item.file, presetId, customOpts, onTick);
+      } catch (e) {
+        if (e && e.code === 'NO_CANVAS') {
+          item.noWorker = true;
+        } else if (e && e.code === 'NO_WORKER') {
+          item.noWorker = true;
+          caps.worker = false;
+        } else throw e;
+      }
+    }
+    if (!res) {
+      res = await Compressor.compress(item.file, {
+        preset: presetId, options: customOpts, onProgress: onTick
+      });
+    }
+    return res;
+  }
+
+  function isRasterFile(item) {
+    return (/^image\//.test(item.file.type || '') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(item.name)) && !/\.svg$/i.test(item.name);
+  }
+
+  function variantSpecsFor(item) {
+    if (isRasterFile(item)) {
+      return [
+        { key: 'll', label: 'Lossless', preset: 'lossless', outFormat: 'auto' },
+        { key: 'p25', label: '25% · Light', preset: 'p25', outFormat: 'auto' },
+        { key: 'p50', label: '50% · Balanced', preset: 'p50', outFormat: 'auto' },
+        { key: 'p75', label: '75% · Small', preset: 'p75', outFormat: 'auto' },
+        { key: 'p90', label: '90% · Tiny', preset: 'p90', outFormat: 'auto' },
+        { key: 'jpg', label: 'JPG · Photo', preset: 'p50', outFormat: 'jpeg' },
+        { key: 'png', label: 'PNG · 8-bit', preset: 'p50', outFormat: 'png' },
+        { key: 'webp', label: 'WEBP · Smallest', preset: 'p75', outFormat: 'webp' }
+      ];
+    }
+    return [
+      { key: 'll', label: 'Lossless', preset: 'lossless', outFormat: 'auto' },
+      { key: 'p25', label: '25% · Light', preset: 'p25', outFormat: 'auto' },
+      { key: 'p50', label: '50% · Balanced', preset: 'p50', outFormat: 'auto' },
+      { key: 'p75', label: '75% · Small', preset: 'p75', outFormat: 'auto' },
+      { key: 'p90', label: '90% · Tiny', preset: 'p90', outFormat: 'auto' },
+      { key: 'ext', label: 'Extreme · Max', preset: 'extreme', outFormat: 'auto' }
+    ];
+  }
+
+  function variantFileName(origName, spec, outName) {
+    const e = extOf(outName || origName) || extOf(origName);
+    const stem = origName.replace(/\.[^.]+$/, '');
+    return `${stem}-${spec.key}.${e}`;
+  }
+
+  async function ensureVariants(item) {
+    item.showVariants = true;
+    if (item.variantsRunning) { renderRow(item.id); return; }
+    if (item.variants && item.variants.every(v => v.status === 'done')) { renderRow(item.id); return; }
+
+    const specs = variantSpecsFor(item);
+    item.variants = specs.map(s => ({ ...s, status: 'run', res: null, err: null }));
+    item.variantsRunning = true;
+    renderRow(item.id);
+
+    const baseOpts = Object.assign({}, state.options, { customBytes: 0 });
+    for (const v of item.variants) {
+      if (!item.showVariants && !state.allMode) break;
+      try {
+        let r;
+        const canReuseMain = item.res && !state.options.customBytes
+          && v.preset === state.preset
+          && v.outFormat === (state.options.outFormat || 'auto')
+          && (v.key !== 'll' || baseOpts.losslessStrict);
+        if (canReuseMain) {
+          r = Object.assign({}, item.res);
+        } else {
+          const vOpts = Object.assign({}, baseOpts, {
+            outFormat: v.outFormat,
+            losslessStrict: v.key === 'll' ? true : baseOpts.losslessStrict,
+            allowWebp: v.outFormat === 'webp' ? true : (v.outFormat === 'auto' ? baseOpts.allowWebp : false)
+          });
+          r = await compressSingle(item, v.preset, vOpts);
+        }
+        r.outName = variantFileName(item.name, v, r.outName);
+        v.res = r;
+        v.status = 'done';
+      } catch (err) {
+        v.err = (err && err.message) || 'failed';
+        v.status = 'error';
+      }
+      renderRow(item.id);
+    }
+    item.variantsRunning = false;
+    renderRow(item.id);
+  }
+
+  async function processItem(item, myEpoch = runEpoch) {
     item.status = 'run';
     item.pct = 6;
     item.err = null;
     item.res = null;
     renderRow(item.id);
     let ticks = 0;
-    const bump = () => { ticks++; item.pct = Math.min(93, 10 + ticks * 7); updateBar(item); };
+    const bump = () => { if (myEpoch === runEpoch) { ticks++; item.pct = Math.min(93, 10 + ticks * 7); updateBar(item); } };
 
     const presetDef = Compressor.PRESETS.find(p => p.id === state.preset) || Compressor.PRESETS[3];
-    const opts = state.options;
+    const opts = Object.assign({}, state.options);
 
     try {
       let res = null;
-      // 1st choice: a worker (off the UI thread, several files in parallel)
-      if (!item.noWorker) {
-        try {
-          res = await Pool.run(item.file, presetDef.id, opts, () => bump());
-        } catch (e) {
-          if (e && e.code === 'NO_CANVAS') {
-            item.noWorker = true;                 // this device's workers cannot raster → do it here
-          } else if (e && e.code === 'STOPPED') {
-            item.status = 'idle'; item.pct = 0; renderRow(item.id); return;
-          } else if (e && e.code === 'NO_WORKER') {
-            item.noWorker = true;
-            caps.worker = false;
-          } else throw e;
+      try {
+        res = await compressSingle(item, presetDef.id, opts, () => bump());
+      } catch (e) {
+        if (myEpoch !== runEpoch) return;
+        if (e && e.code === 'STOPPED') {
+          item.status = 'idle'; item.pct = 0; renderRow(item.id); return;
         }
+        throw e;
       }
-      // 2nd choice: this thread
-      if (!res) {
-        res = await Compressor.compress(item.file, {
-          preset: presetDef.id, options: opts, onProgress: () => bump()
-        });
-      }
+      if (myEpoch !== runEpoch) return;
       item.res = res;
       item.status = 'done';
       item.pct = 100;
     } catch (err) {
+      if (myEpoch !== runEpoch) return;
       console.error(err);
       item.status = 'error';
       item.err = (err && err.message) || 'failed';
@@ -382,6 +639,9 @@
     }
     renderRow(item.id);
     renderTotals();
+    if (state.allMode && item.status === 'done') {
+      ensureVariants(item);
+    }
   }
 
   function markStale() {
@@ -398,14 +658,22 @@
     runQueue();
   });
   $('#stop').addEventListener('click', () => {
+    runEpoch++;
     Pool.stop();
     state.running = false;
+    $('#stop').hidden = true;
     state.items.forEach(i => { if (i.status === 'run' || i.status === 'idle') { i.status = 'idle'; i.pct = 0; } });
     render();
     toast('stopped — press re-run to continue');
   });
   $('#clear').addEventListener('click', () => {
-    if (state.running) return toast('wait for the current batch');
+    if (state.running) {
+      runEpoch++;
+      Pool.stop();
+      state.running = false;
+      const stopBtn = $('#stop');
+      if (stopBtn) stopBtn.hidden = true;
+    }
     state.items = [];
     $('#rows').innerHTML = '';
     $('#queue').hidden = true;
@@ -498,6 +766,20 @@
         e.textContent = 'preset changed — re-run';
         n2.appendChild(e);
       }
+      const vt = document.createElement('button');
+      vt.type = 'button';
+      vt.className = 'vtoggle' + (item.showVariants ? ' on' : '');
+      vt.textContent = item.showVariants ? '▾ Hide all sizes' : '⚡ All sizes & formats';
+      vt.addEventListener('click', () => {
+        if (item.showVariants) {
+          item.showVariants = false;
+          renderRow(item.id);
+        } else {
+          ensureVariants(item);
+        }
+      });
+      n2.appendChild(vt);
+
       saved.className = 'saved ' + (pctv >= 50 ? '' : pctv >= 20 ? 'mid' : 'low');
       saved.innerHTML = `${pctv > 0 ? '−' : ''}${Math.abs(pctv)}%<small>${pctv > 0 ? 'smaller' : pctv < 0 ? 'bigger' : 'no change'}</small>`;
 
@@ -508,7 +790,7 @@
       acts.appendChild(dl);
 
       const isImg = /^image\//.test(item.file.type || '') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(item.name);
-      const canCompare = isImg && !r.lossless && r.bytes.length < item.size;
+      const canCompare = isImg && !r.lossless && (r.bytes.length < item.size || extOf(r.outName) !== extOf(item.name));
       if (canCompare) {
         const cmp = document.createElement('button');
         cmp.className = 'btn sm';
@@ -526,6 +808,74 @@
         acts.appendChild(pv);
       }
     }
+
+    const oldPanel = $('.vpanel', el);
+    if (oldPanel) oldPanel.remove();
+    if (item.showVariants && item.variants && item.variants.length) {
+      const panel = document.createElement('div');
+      panel.className = 'vpanel';
+      const doneVars = item.variants.filter(v => v.status === 'done' && v.res);
+      const head = document.createElement('div');
+      head.className = 'vp-head';
+      head.innerHTML = `<div><b>All levels &amp; formats</b> · <span>${doneVars.length}/${item.variants.length} ready (from 1 upload)</span></div>`;
+      if (doneVars.length > 1) {
+        const zb = document.createElement('button');
+        zb.type = 'button';
+        zb.className = 'btn sm ghost';
+        zb.innerHTML = '<svg><use href="#i-zip"/></svg>ZIP all variants';
+        zb.addEventListener('click', async () => {
+          const entries = doneVars.map(v => ({ name: v.res.outName, data: v.res.bytes }));
+          const zip = await ZipCodec.write(entries);
+          download(zip, item.name.replace(/\.[^.]+$/, '') + '-all-variants.zip', 'application/zip');
+        });
+        head.appendChild(zb);
+      }
+      panel.appendChild(head);
+
+      const grid = document.createElement('div');
+      grid.className = 'vgrid';
+      for (const v of item.variants) {
+        const card = document.createElement('div');
+        card.className = 'vcard';
+        if (v.status === 'run') {
+          card.innerHTML = `<div class="vc-top"><span class="vc-lbl">${v.label}</span></div><div class="vc-wait"><span class="spin"></span>building…</div>`;
+        } else if (v.status === 'error' || !v.res) {
+          card.innerHTML = `<div class="vc-top"><span class="vc-lbl">${v.label}</span></div><div class="vc-wait">unavailable</div>`;
+        } else {
+          const vr = v.res;
+          const vpct = Math.round((1 - vr.bytes.length / item.size) * 1000) / 10;
+          const eLabel = (extOf(vr.outName) || extOf(item.name)).toUpperCase();
+          card.innerHTML = `
+            <div class="vc-top"><span class="vc-lbl">${v.label}</span><span class="vc-ext">${eLabel}</span></div>
+            <div class="vc-mid">
+              <span class="vc-sz">${fmt(vr.bytes.length)}</span>
+              <span class="vc-pct${vpct <= 1 ? ' low' : ''}">${vpct > 0 ? '−' + vpct + '%' : vpct < 0 ? '+' + Math.abs(vpct) + '%' : '0%'}</span>
+            </div>`;
+          const vacts = document.createElement('div');
+          vacts.className = 'vc-acts';
+          const vdl = document.createElement('button');
+          vdl.type = 'button';
+          vdl.className = 'btn sm solid';
+          vdl.innerHTML = '<svg><use href="#i-down"/></svg>Save';
+          vdl.addEventListener('click', () => download(vr.bytes, vr.outName, mimeFor(vr.outName)));
+          vacts.appendChild(vdl);
+          if (isRasterFile(item) && !vr.lossless) {
+            const vcmp = document.createElement('button');
+            vcmp.type = 'button';
+            vcmp.className = 'btn sm ico';
+            vcmp.title = 'Compare ' + v.label;
+            vcmp.innerHTML = '<svg><use href="#i-eye"/></svg>';
+            vcmp.addEventListener('click', () => openCompare({ name: `${item.name} (${v.label})`, size: item.size, file: item.file, res: vr }));
+            vacts.appendChild(vcmp);
+          }
+          card.appendChild(vacts);
+        }
+        grid.appendChild(card);
+      }
+      panel.appendChild(grid);
+      el.appendChild(panel);
+    }
+
     updateBar(item, el);
     renderTotals();
   }
@@ -840,21 +1190,35 @@
   if (tdz && tInput) {
     tdz.addEventListener('click', (e) => { if (e.target.closest('.btn')) return; tInput.click(); });
     tdz.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tInput.click(); } });
-    $('#tbrowse').addEventListener('click', (e) => { e.stopPropagation(); tInput.click(); });
-    const takeFiles = async (list) => {
+    const escH = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const syncPickedUI = () => {
       const tool = hub.tool || {};
-      const cap = tool.multiple === false ? 1 : 50;
-      const skipped = [];
-      hub.files = [];
-      for (const f of list) {
-        if (hub.files.length >= cap) { skipped.push(f.name); continue; }
-        if (!acceptOk(tool, f)) { skipped.push(f.name); continue; }
-        try { hub.files.push({ name: f.name, type: f.type, bytes: new Uint8Array(await f.arrayBuffer()) }); }
-        catch (e) { skipped.push(f.name); }
+      const box = $('#toolPicked');
+      box.innerHTML = hub.files.map((f, i) => `
+        <div class="tout">
+          <span class="nm">${escH(f.name)}</span>
+          <span class="meta">${fmt(f.bytes.length)}</span>
+          <button class="btn sm ico" type="button" data-rm="${i}" title="Remove file" aria-label="Remove ${escH(f.name)}"><svg><use href="#i-x"/></svg></button>
+        </div>`).join('');
+      $$('[data-rm]', box).forEach((btn) => btn.addEventListener('click', () => {
+        hub.files.splice(+btn.dataset.rm, 1);
+        $('#toolResults').innerHTML = '';
+        $('#toolNote').textContent = '';
+        syncPickedUI();
+      }));
+      if (hub.files.length > 1) {
+        const clr = document.createElement('button');
+        clr.className = 'btn sm';
+        clr.type = 'button';
+        clr.textContent = 'Clear files';
+        clr.addEventListener('click', () => {
+          hub.files = [];
+          $('#toolResults').innerHTML = '';
+          $('#toolNote').textContent = '';
+          syncPickedUI();
+        });
+        box.appendChild(clr);
       }
-      $('#toolPicked').innerHTML = hub.files.map((f) => `<div class="tout"><span class="nm">${f.name}</span><span class="meta">${fmt(f.bytes.length)}</span></div>`).join('');
-      $('#toolResults').innerHTML = '';
-      $('#toolNote').textContent = '';
       const tdzTitle = $('#tdzTitle');
       if (tdzTitle) tdzTitle.textContent = hub.files.length
         ? (tool.multiple === false ? 'Drop another file to replace' : 'Drop more files to add')
@@ -864,6 +1228,23 @@
       } else {
         $('#tState').textContent = 'no file yet';
       }
+    };
+
+    $('#tbrowse').addEventListener('click', (e) => { e.stopPropagation(); tInput.click(); });
+    const takeFiles = async (list) => {
+      const tool = hub.tool || {};
+      const cap = tool.multiple === false ? 1 : 50;
+      const skipped = [];
+      if (tool.multiple === false) hub.files = [];
+      for (const f of list) {
+        if (hub.files.length >= cap) { skipped.push(f.name); continue; }
+        if (!acceptOk(tool, f)) { skipped.push(f.name); continue; }
+        try { hub.files.push({ name: f.name, type: f.type, bytes: new Uint8Array(await f.arrayBuffer()) }); }
+        catch (e) { skipped.push(f.name); }
+      }
+      $('#toolResults').innerHTML = '';
+      $('#toolNote').textContent = '';
+      syncPickedUI();
       if (skipped.length) {
         const want = (tool.accept || '').replace(/[^.,\w/*-]/g, '').split(',').filter((x) => x.startsWith('.')).map((x) => x.slice(1).toUpperCase()).join(', ');
         toast(`${skipped.length} file${skipped.length > 1 ? 's' : ''} skipped — this tool takes${want ? ' ' + want : ' another type'}`);
@@ -969,10 +1350,11 @@
     const box = $('#toolResults');
     const files = (res && res.files) || [];
     if (!files.length) { renderError('the tool returned nothing — try another file'); return; }
+    const escR = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     box.innerHTML = files.map((f, i) => `
       <div class="tout">
-        <span class="nm">${f.name}</span>
-        <span class="meta">${fmt(f.bytes.length)}${f.note ? ' · ' + f.note : ''}</span>
+        <span class="nm">${escR(f.name)}</span>
+        <span class="meta">${fmt(f.bytes.length)}${f.note ? ' · ' + escR(f.note) : ''}</span>
         <button class="btn sm solid" type="button" data-dl="${i}"><svg><use href="#i-down"/></svg>Save</button>
       </div>`).join('');
     $$('[data-dl]', box).forEach((btn) => btn.addEventListener('click', () => {
@@ -995,12 +1377,7 @@
   }
 
   function saveBytes(bytes, name) {
-    const blob = new Blob([bytes], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    download(bytes, name, mimeFor(name));
   }
 
   const tCopy = $('#tCopy');
@@ -1077,10 +1454,22 @@
   // offline shell — skipped in automated browsers so test runs never hit a stale cache
   const automated = typeof navigator !== 'undefined' && navigator.webdriver;
   if (!automated && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    const hadController = !!navigator.serviceWorker.controller;
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController && !refreshing && !state.running && !state.items.length) {
+        refreshing = true;
+        location.reload();
+      }
+    });
     // the same bundle ships at / (index.html) and /compress/ — try the local copy first
     (async () => {
       for (const p of ['sw.js', '../sw.js']) {
-        try { await navigator.serviceWorker.register(p, { scope: './' }); return; } catch (e) { /* next */ }
+        try {
+          const reg = await navigator.serviceWorker.register(p, { scope: './', updateViaCache: 'none' });
+          reg.update().catch(() => {});
+          return;
+        } catch (e) { /* next */ }
       }
     })();
   }

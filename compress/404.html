@@ -9,18 +9,26 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="robots" content="noindex">
 <style>
-  :root{--bg:#373A3E;--s1:#2E3135;--b1:#3F4348;--tx:#F4F0EA;--t2:#B9B6B0;--t3:#8C8A85;--r:#D75A5A;--gold:#BFA873}
+  :root{--bg:#F8F4EF;--s1:#FFFCF8;--b1:#EADFD3;--tx:#2F2A26;--t2:#615A53;--t3:#8B8178;--r:#E08D7B;--r-hov:#EB9E8D;--gold:#C8A97E}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#262220;--s1:#2E2A27;--b1:#453E39;--tx:#F6F0E9;--t2:#CFC5BA;--t3:#9C9086;--r:#E08D7B;--r-hov:#EB9E8D;--gold:#C8A97E}
+  }
   *{box-sizing:border-box}
   body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--tx);
        font:13px/1.7 Montserrat,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:28px;text-align:center}
-  .box{max-width:460px}
-  .k{font-size:8px;letter-spacing:1.6px;text-transform:uppercase;color:var(--gold)}
+  .box{max-width:460px;background:var(--s1);border:1px solid var(--b1);border-radius:24px;padding:36px 32px;
+       box-shadow:0 14px 34px rgba(90,70,50,.09)}
+  .k{font-size:8px;letter-spacing:1.6px;text-transform:uppercase;color:var(--gold);font-weight:600}
   h1{font-size:34px;letter-spacing:5px;text-transform:uppercase;margin:14px 0 8px}
   h1 span{color:var(--r)}
   p{color:var(--t2);font-size:12px}
-  a.btn{display:inline-block;margin-top:22px;padding:11px 22px;border-radius:999px;background:var(--r);
-        color:#1e1f21;text-decoration:none;font-weight:700;font-size:10px;letter-spacing:1.6px;text-transform:uppercase}
-  a.alt{display:block;margin-top:14px;color:var(--t3);font-size:10px;letter-spacing:1.2px;text-transform:uppercase}
+  a.btn{display:inline-block;margin-top:22px;padding:11px 24px;border-radius:999px;background:var(--r);
+        color:#fff;text-decoration:none;font-weight:700;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;
+        box-shadow:0 4px 12px rgba(224,141,123,.26);transition:.18s ease}
+  a.btn:hover{background:var(--r-hov);transform:translateY(-1px)}
+  a.alt{display:inline-block;margin-top:14px;padding:4px 12px;border-radius:999px;color:var(--t3);
+        font-size:10px;letter-spacing:1.2px;text-transform:uppercase;text-decoration:none}
+  a.alt:hover{color:var(--tx)}
 </style>
 </head>
 <body>
@@ -29,7 +37,7 @@
     <h1>404<span>.</span></h1>
     <p>This page does not exist — but the whole compressor does, and it is one click away.
        Every tool runs locally in your browser.</p>
-    <a class="btn" href="./index.html">Open the compressor</a>
+    <a class="btn" href="./index.html">Open the compressor</a><br>
     <a class="alt" href="./compress/">or go to /compress/</a>
   </div>
   <script>

@@ -207,5 +207,177 @@ const PNGCodec = (() => {
     return best;
   }
 
-  return { optimize, parse, compressSamples, unfilter, refilter };
+  /* Lossy 8-bit palette quantiser (TinyPNG-style PLTE + tRNS).
+     Preserves full alpha transparency and .png format while cutting size 60–85 %. */
+  async function quantize(rgba, width, height, maxColors = 256) {
+    const nPix = width * height;
+    if (!rgba || rgba.length < nPix * 4 || width < 1 || height < 1) return null;
+    maxColors = Math.max(8, Math.min(256, maxColors | 0));
+
+    // 1 — build 16-bit RGBA histogram with exact 8-bit channel accumulators
+    const counts = new Uint32Array(65536);
+    const rSum = new Float64Array(65536);
+    const gSum = new Float64Array(65536);
+    const bSum = new Float64Array(65536);
+    const aSum = new Float64Array(65536);
+    const strideStep = nPix > 1500000 ? 2 : 1;
+    let hasTrans = false;
+    for (let i = 0; i < nPix; i += strideStep) {
+      const p = i * 4;
+      const a = rgba[p + 3];
+      if (a < 252) hasTrans = true;
+      if (a < 4) {
+        counts[0]++;
+        continue;
+      }
+      const key = ((rgba[p] >> 4) << 12) | ((rgba[p + 1] >> 4) << 8) | ((rgba[p + 2] >> 4) << 4) | (a >> 4);
+      counts[key]++;
+      rSum[key] += rgba[p];
+      gSum[key] += rgba[p + 1];
+      bSum[key] += rgba[p + 2];
+      aSum[key] += a;
+    }
+
+    const items = [];
+    for (let k = 0; k < 65536; k++) {
+      const c = counts[k];
+      if (!c) continue;
+      if (k === 0 && aSum[0] === 0) {
+        items.push({ c, r: 0, g: 0, b: 0, a: 0 });
+      } else {
+        items.push({
+          c,
+          r: Math.round(rSum[k] / c),
+          g: Math.round(gSum[k] / c),
+          b: Math.round(bSum[k] / c),
+          a: hasTrans ? Math.round(aSum[k] / c) : 255
+        });
+      }
+    }
+    if (!items.length) items.push({ c: 1, r: 0, g: 0, b: 0, a: 255 });
+
+    // 2 — median-cut split up to maxColors boxes
+    const makeBox = (list) => {
+      let rMin = 255, rMax = 0, gMin = 255, gMax = 0, bMin = 255, bMax = 0, aMin = 255, aMax = 0, pop = 0;
+      for (let i = 0; i < list.length; i++) {
+        const it = list[i];
+        pop += it.c;
+        if (it.r < rMin) rMin = it.r; if (it.r > rMax) rMax = it.r;
+        if (it.g < gMin) gMin = it.g; if (it.g > gMax) gMax = it.g;
+        if (it.b < bMin) bMin = it.b; if (it.b > bMax) bMax = it.b;
+        if (it.a < aMin) aMin = it.a; if (it.a > aMax) aMax = it.a;
+      }
+      const dr = (rMax - rMin) * 1.1, dg = (gMax - gMin) * 1.3, db = (bMax - bMin) * 0.9, da = (aMax - aMin) * 1.4;
+      const span = Math.max(dr, dg, db, da);
+      const ch = span === dg ? 'g' : span === dr ? 'r' : span === da ? 'a' : 'b';
+      const score = list.length > 1 ? span * Math.pow(pop, 0.35) : -1;
+      return { list, pop, ch, score };
+    };
+
+    const boxes = [makeBox(items)];
+    while (boxes.length < maxColors) {
+      let bi = -1, bestScore = 0;
+      for (let i = 0; i < boxes.length; i++) {
+        if (boxes[i].score > bestScore) { bestScore = boxes[i].score; bi = i; }
+      }
+      if (bi < 0) break;
+      const box = boxes[bi];
+      const ch = box.ch;
+      box.list.sort((x, y) => x[ch] - y[ch]);
+      const half = box.pop / 2;
+      let acc = 0, cut = 1;
+      for (let i = 0; i < box.list.length - 1; i++) {
+        acc += box.list[i].c;
+        if (acc >= half) { cut = i + 1; break; }
+      }
+      boxes.splice(bi, 1, makeBox(box.list.slice(0, cut)), makeBox(box.list.slice(cut)));
+    }
+
+    const pal = boxes.map((bx) => {
+      let rs = 0, gs = 0, bs = 0, as = 0, pop = 0;
+      for (let i = 0; i < bx.list.length; i++) {
+        const it = bx.list[i];
+        rs += it.r * it.c; gs += it.g * it.c; bs += it.b * it.c; as += it.a * it.c; pop += it.c;
+      }
+      const a = hasTrans ? Math.round(as / pop) : 255;
+      return a < 4 ? { r: 0, g: 0, b: 0, a: 0 } : { r: Math.round(rs / pop), g: Math.round(gs / pop), b: Math.round(bs / pop), a };
+    });
+
+    // put alpha < 255 entries first so tRNS chunk stays tiny
+    pal.sort((x, y) => (x.a < 255 ? 0 : 1) - (y.a < 255 ? 0 : 1));
+    const pLen = pal.length;
+    const pR = new Uint8Array(pLen), pG = new Uint8Array(pLen), pB = new Uint8Array(pLen), pA = new Uint8Array(pLen);
+    let trnsLen = 0;
+    for (let i = 0; i < pLen; i++) {
+      pR[i] = pal[i].r; pG[i] = pal[i].g; pB[i] = pal[i].b; pA[i] = pal[i].a;
+      if (pal[i].a < 255) trnsLen = i + 1;
+    }
+
+    // 3 — map pixels with a 16-bit cell cache
+    const lut = new Int16Array(65536);
+    lut.fill(-1);
+    const idx = new Uint8Array(nPix);
+    let zeroIdx = -1;
+    for (let i = 0; i < pLen; i++) if (pA[i] < 4) { zeroIdx = i; break; }
+
+    for (let i = 0; i < nPix; i++) {
+      const p = i * 4;
+      const a = hasTrans ? rgba[p + 3] : 255;
+      if (a < 4 && zeroIdx >= 0) { idx[i] = zeroIdx; continue; }
+      const r = rgba[p], g = rgba[p + 1], b = rgba[p + 2];
+      const key = ((r >> 4) << 12) | ((g >> 4) << 8) | ((b >> 4) << 4) | (a >> 4);
+      let best = lut[key];
+      if (best < 0) {
+        let bestD = Infinity;
+        for (let j = 0; j < pLen; j++) {
+          const dr = r - pR[j], dg = g - pG[j], db = b - pB[j], da = a - pA[j];
+          const d = dr * dr * 2 + dg * dg * 4 + db * db + da * da * 4;
+          if (d < bestD) { bestD = d; best = j; if (d === 0) break; }
+        }
+        lut[key] = best;
+      }
+      idx[i] = best;
+    }
+
+    // 4 — filter + deflate (None vs Sub vs Adaptive on 8-bit indices)
+    const f0 = refilter(idx, width, height, 1, width, 0);
+    let bestIdat = await Util.deflate(f0);
+    if (nPix <= 2500000) {
+      const f1 = refilter(idx, width, height, 1, width, -1);
+      const z1 = await Util.deflate(f1);
+      if (z1.length < bestIdat.length) bestIdat = z1;
+    }
+
+    const ihdr = new Uint8Array(13);
+    const dv = new DataView(ihdr.buffer);
+    dv.setUint32(0, width);
+    dv.setUint32(4, height);
+    ihdr[8] = 8; ihdr[9] = 3; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+
+    const plte = new Uint8Array(pLen * 3);
+    for (let i = 0; i < pLen; i++) { plte[i * 3] = pR[i]; plte[i * 3 + 1] = pG[i]; plte[i * 3 + 2] = pB[i]; }
+
+    const parts = [new Uint8Array(SIG), chunk('IHDR', ihdr), chunk('PLTE', plte)];
+    if (trnsLen > 0) parts.push(chunk('tRNS', pA.subarray(0, trnsLen)));
+    parts.push(chunk('IDAT', bestIdat), chunk('IEND', new Uint8Array(0)));
+    return Util.concat(parts);
+  }
+
+  /* Lossless 8-bit Gray / RGB / RGBA raw samples → valid PNG */
+  async function encodeRaw(samples, width, height, channels) {
+    if (!samples || !width || !height) return null;
+    const colorType = channels === 1 ? 0 : channels === 3 ? 2 : channels === 4 ? 6 : -1;
+    if (colorType < 0 || samples.length < width * height * channels) return null;
+    const stride = width * channels;
+    const filtered = refilter(samples, width, height, channels, stride, -1);
+    const idat = await Util.deflate(filtered);
+    const ihdr = new Uint8Array(13);
+    const dv = new DataView(ihdr.buffer);
+    dv.setUint32(0, width);
+    dv.setUint32(4, height);
+    ihdr[8] = 8; ihdr[9] = colorType; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+    return Util.concat([new Uint8Array(SIG), chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', new Uint8Array(0))]);
+  }
+
+  return { optimize, quantize, encodeRaw, parse, compressSamples, unfilter, refilter };
 })();

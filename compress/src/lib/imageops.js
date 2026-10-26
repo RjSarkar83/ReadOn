@@ -344,9 +344,17 @@ const ImageOps = (() => {
     ctx2d(c).putImageData(img, 0, 0);
     const ctx = ctx2d(c);
     const text = opts.text || 'ArtViSiON';
-    const size = Math.max(12, Math.round((opts.size || 0.06) * Math.max(img.width, img.height)));
+    let size = Math.max(12, Math.round((opts.size || 0.06) * Math.max(img.width, img.height)));
     ctx.save();
     ctx.font = `600 ${size}px Montserrat, system-ui, sans-serif`;
+    if (!opts.tile) {
+      const maxW = Math.max(40, img.width * 0.88);
+      const measured = ctx.measureText(text).width;
+      if (measured > maxW) {
+        size = Math.max(10, Math.floor(size * (maxW / measured)));
+        ctx.font = `600 ${size}px Montserrat, system-ui, sans-serif`;
+      }
+    }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.globalAlpha = opts.opacity != null ? opts.opacity : 0.35;
@@ -356,32 +364,47 @@ const ImageOps = (() => {
     if (opts.tile) {
       const stepX = ctx.measureText(text).width + size * 2;
       const stepY = size * 2.6;
+      const diag = Math.hypot(img.width, img.height);
       ctx.translate(img.width / 2, img.height / 2);
       ctx.rotate(-Math.PI / 5);
-      ctx.translate(-img.width / 2, -img.height / 2);
-      for (let y = -img.height; y < img.height * 2; y += stepY) {
-        for (let x = -img.width; x < img.width * 2; x += stepX) ctx.fillText(text, x, y);
+      for (let y = -diag; y <= diag; y += stepY) {
+        for (let x = -diag; x <= diag; x += stepX) ctx.fillText(text, x, y);
       }
     } else {
       const pos = opts.pos || 'br';
       const pad = size * 0.6;
-      const x = pos.includes('l') ? pad + ctx.measureText(text).width / 2 : img.width - pad - ctx.measureText(text).width / 2;
-      const y = pos.includes('t') ? pad + size / 2 : img.height - pad - size / 2;
-      ctx.fillText(text, opts.pos === 'c' ? img.width / 2 : x, opts.pos === 'c' ? img.height / 2 : y);
+      const halfW = ctx.measureText(text).width / 2;
+      const x = pos === 'c' ? img.width / 2 : pos.includes('l') ? Math.min(img.width / 2, pad + halfW) : Math.max(img.width / 2, img.width - pad - halfW);
+      const y = pos === 'c' ? img.height / 2 : pos.includes('t') ? pad + size / 2 : img.height - pad - size / 2;
+      ctx.fillText(text, x, y);
     }
     ctx.restore();
     return ctx.getImageData(0, 0, img.width, img.height);
   }
 
   /* high quality down/up scale of an ImageData through the DOM canvas */
-  function toCanvas(img) {
+  function toCanvas(img, flattenBg = null) {
     const c = canvas(img.width, img.height);
-    ctx2d(c).putImageData(img, 0, 0);
+    const ctx = ctx2d(c);
+    if (flattenBg) {
+      let hasAlpha = false;
+      const d = img.data;
+      for (let i = 3; i < d.length; i += 4) { if (d[i] < 255) { hasAlpha = true; break; } }
+      if (hasAlpha) {
+        const tmp = canvas(img.width, img.height);
+        ctx2d(tmp).putImageData(img, 0, 0);
+        ctx.fillStyle = flattenBg;
+        ctx.fillRect(0, 0, img.width, img.height);
+        ctx.drawImage(tmp, 0, 0);
+        return c;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
     return c;
   }
 
   async function encode(img, mime = 'image/jpeg', quality = 0.92) {
-    const c = toCanvas(img);
+    const c = toCanvas(img, mime === 'image/jpeg' ? '#ffffff' : null);
     const blob = c.convertToBlob ? await c.convertToBlob({ type: mime, quality }) : await new Promise((r) => c.toBlob(r, mime, quality));
     return new Uint8Array(await blob.arrayBuffer());
   }
